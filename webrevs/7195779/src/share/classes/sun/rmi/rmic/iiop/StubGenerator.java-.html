@@ -1,0 +1,2356 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>Old src/share/classes/sun/rmi/rmic/iiop/StubGenerator.java</title>
+<body id="SUNWwebrev">
+<pre>
+   1 /*
+   2  * Copyright (c) 1998, 2012, Oracle and/or its affiliates. All rights reserved.
+   3  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+   4  *
+   5  * This code is free software; you can redistribute it and/or modify it
+   6  * under the terms of the GNU General Public License version 2 only, as
+   7  * published by the Free Software Foundation.  Oracle designates this
+   8  * particular file as subject to the "Classpath" exception as provided
+   9  * by Oracle in the LICENSE file that accompanied this code.
+  10  *
+  11  * This code is distributed in the hope that it will be useful, but WITHOUT
+  12  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+  13  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+  14  * version 2 for more details (a copy is included in the LICENSE file that
+  15  * accompanied this code).
+  16  *
+  17  * You should have received a copy of the GNU General Public License version
+  18  * 2 along with this work; if not, write to the Free Software Foundation,
+  19  * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+  20  *
+  21  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+  22  * or visit www.oracle.com if you need additional information or have any
+  23  * questions.
+  24  */
+  25 
+  26 /*
+  27  * Licensed Materials - Property of IBM
+  28  * RMI-IIOP v1.0
+  29  * Copyright IBM Corp. 1998 1999  All Rights Reserved
+  30  *
+  31  */
+  32 
+  33 package sun.rmi.rmic.iiop;
+  34 
+  35 import java.io.File;
+  36 import java.io.IOException;
+  37 import java.util.Vector;
+  38 import java.util.Hashtable;
+  39 import java.util.Enumeration;
+  40 import sun.tools.java.Identifier;
+  41 import sun.tools.java.ClassNotFound;
+  42 import sun.tools.java.ClassDefinition;
+  43 import sun.tools.java.ClassDeclaration;
+  44 import sun.tools.java.CompilerError;
+  45 import sun.rmi.rmic.IndentingWriter;
+  46 import java.util.HashSet;
+  47 import java.util.Arrays;
+  48 import com.sun.corba.se.impl.util.Utility;
+  49 import com.sun.corba.se.impl.util.PackagePrefixChecker;
+  50 import sun.rmi.rmic.Main;
+  51 
+  52 /**
+  53  * An IIOP stub/tie generator for rmic.
+  54  *
+  55  * @author      Bryan Atsatt
+  56  * @author      Anil Vijendran
+  57  * @author      M. Mortazavi
+  58  */
+  59 
+  60 public class StubGenerator extends sun.rmi.rmic.iiop.Generator {
+  61 
+  62     private static final String DEFAULT_STUB_CLASS = "javax.rmi.CORBA.Stub";
+  63     private static final String DEFAULT_TIE_CLASS = "org.omg.CORBA_2_3.portable.ObjectImpl";
+  64     private static final String DEFAULT_POA_TIE_CLASS = "org.omg.PortableServer.Servant";
+  65 
+  66     protected boolean reverseIDs = false;
+  67     protected boolean localStubs = true;
+  68     protected boolean standardPackage = false;
+  69     protected boolean useHash = true;
+  70     protected String stubBaseClass = DEFAULT_STUB_CLASS;
+  71     protected String tieBaseClass = DEFAULT_TIE_CLASS;
+  72     protected HashSet namesInUse = new HashSet();
+  73     protected Hashtable classesInUse = new Hashtable();
+  74     protected Hashtable imports = new Hashtable();
+  75     protected int importCount = 0;
+  76     protected String currentPackage = null;
+  77     protected String currentClass = null;
+  78     protected boolean castArray = false;
+  79     protected Hashtable transactionalObjects = new Hashtable() ;
+  80     protected boolean POATie = false ;
+  81 
+  82     /**
+  83      * Default constructor for Main to use.
+  84      */
+  85     public StubGenerator() {
+  86     }
+  87 
+  88     /**
+  89      * Overridden in order to set the standardPackage flag.
+  90      */
+  91     public void generate(
+  92             sun.rmi.rmic.BatchEnvironment env,
+  93             ClassDefinition cdef, File destDir) {
+  94         ((sun.rmi.rmic.iiop.BatchEnvironment)env).
+  95                 setStandardPackage(standardPackage);
+  96         super.generate(env, cdef, destDir);
+  97     }
+  98 
+  99     /**
+ 100      * Return true if a new instance should be created for each
+ 101      * class on the command line. Subclasses which return true
+ 102      * should override newInstance() to return an appropriately
+ 103      * constructed instance.
+ 104      */
+ 105     protected boolean requireNewInstance() {
+ 106         return false;
+ 107     }
+ 108 
+ 109     /**
+ 110      * Return true if non-conforming types should be parsed.
+ 111      * @param stack The context stack.
+ 112      */
+ 113     protected boolean parseNonConforming(ContextStack stack) {
+ 114 
+ 115         // We let the environment setting decide so that
+ 116         // another generator (e.g. IDLGenerator) can change
+ 117         // it and we will just go with the flow...
+ 118 
+ 119         return stack.getEnv().getParseNonConforming();
+ 120     }
+ 121 
+ 122     /**
+ 123      * Create and return a top-level type.
+ 124      * @param cdef The top-level class definition.
+ 125      * @param stack The context stack.
+ 126      * @return The compound type or null if is non-conforming.
+ 127      */
+ 128     protected CompoundType getTopType(ClassDefinition cdef, ContextStack stack) {
+ 129 
+ 130         CompoundType result = null;
+ 131 
+ 132         // Do we have an interface?
+ 133 
+ 134         if (cdef.isInterface()) {
+ 135 
+ 136             // Yes, so first try Abstract...
+ 137 
+ 138             result = AbstractType.forAbstract(cdef,stack,true);
+ 139 
+ 140             if (result == null) {
+ 141 
+ 142                 // Then try Remote...
+ 143 
+ 144                 result = RemoteType.forRemote(cdef,stack,false);
+ 145             }
+ 146         } else {
+ 147 
+ 148             // Not an interface, so try Implementation...
+ 149 
+ 150             result = ImplementationType.forImplementation(cdef,stack,false);
+ 151         }
+ 152 
+ 153         return result;
+ 154     }
+ 155 
+ 156     /**
+ 157      * Examine and consume command line arguments.
+ 158      * @param argv The command line arguments. Ignore null
+ 159      * and unknown arguments. Set each consumed argument to null.
+ 160      * @param error Report any errors using the main.error() methods.
+ 161      * @return true if no errors, false otherwise.
+ 162      */
+ 163     public boolean parseArgs(String argv[], Main main) {
+ 164         Object marker = new Object() ;
+ 165 
+ 166         // Reset any cached options...
+ 167 
+ 168         reverseIDs = false;
+ 169         localStubs = true;
+ 170         useHash = true;
+ 171         stubBaseClass = DEFAULT_STUB_CLASS;
+ 172         //       tieBaseClass = DEFAULT_TIE_CLASS;
+ 173         transactionalObjects = new Hashtable() ;
+ 174 
+ 175         // Parse options...
+ 176 
+ 177         boolean result = super.parseArgs(argv,main);
+ 178         if (result) {
+ 179             for (int i = 0; i &lt; argv.length; i++) {
+ 180                 if (argv[i] != null) {
+ 181                     String arg = argv[i].toLowerCase();
+ 182                     if (arg.equals("-iiop")) {
+ 183                         argv[i] = null;
+ 184                     } else if (arg.equals("-xreverseids")) {
+ 185                         reverseIDs = true;
+ 186                         argv[i] = null;
+ 187                     } else if (arg.equals("-nolocalstubs")) {
+ 188                         localStubs = false;
+ 189                         argv[i] = null;
+ 190                     } else if (arg.equals("-xnohash")) {
+ 191                         useHash = false;
+ 192                         argv[i] = null;
+ 193                     } else if (argv[i].equals("-standardPackage")) {
+ 194                         standardPackage = true;
+ 195                         argv[i] = null;
+ 196                     } else if (arg.equals("-xstubbase")) {
+ 197                         argv[i] = null;
+ 198                         if (++i &lt; argv.length &amp;&amp; argv[i] != null &amp;&amp; !argv[i].startsWith("-")) {
+ 199                             stubBaseClass = argv[i];
+ 200                             argv[i] = null;
+ 201                         } else {
+ 202                             main.error("rmic.option.requires.argument", "-Xstubbase");
+ 203                             result = false;
+ 204                         }
+ 205                     } else if (arg.equals("-xtiebase")) {
+ 206                         argv[i] = null;
+ 207                         if (++i &lt; argv.length &amp;&amp; argv[i] != null &amp;&amp; !argv[i].startsWith("-")) {
+ 208                             tieBaseClass = argv[i];
+ 209                             argv[i] = null;
+ 210                         } else {
+ 211                             main.error("rmic.option.requires.argument", "-Xtiebase");
+ 212                             result = false;
+ 213                         }
+ 214                     } else if (arg.equals("-transactional" )) {
+ 215                         // Scan for the next non-flag argument.
+ 216                         // Assume that it is a class name and add it
+ 217                         // to the list of transactional classes.
+ 218                         for ( int ctr=i+1; ctr&lt;argv.length; ctr++ ) {
+ 219                             if (argv[ctr].charAt(1) != '-') {
+ 220                                 transactionalObjects.put( argv[ctr], marker ) ;
+ 221                                 break ;
+ 222                             }
+ 223                         }
+ 224                         argv[i] = null;
+ 225                     } else if (arg.equals( "-poa" )) {
+ 226                         POATie = true ;
+ 227                         argv[i] = null;
+ 228                     }
+ 229                 }
+ 230             }
+ 231         }
+ 232         if(POATie){
+ 233             tieBaseClass = DEFAULT_POA_TIE_CLASS;
+ 234         } else {
+ 235             tieBaseClass = DEFAULT_TIE_CLASS;
+ 236         }
+ 237         return result;
+ 238     }
+ 239 
+ 240     /**
+ 241      * Return an array containing all the file names and types that need to be
+ 242      * generated for the given top-level type.  The file names must NOT have an
+ 243      * extension (e.g. ".java").
+ 244      * @param topType The type returned by getTopType().
+ 245      * @param alreadyChecked A set of Types which have already been checked.
+ 246      *  Intended to be passed to topType.collectMatching(filter,alreadyChecked).
+ 247      */
+ 248     protected OutputType[] getOutputTypesFor(CompoundType topType,
+ 249                                              HashSet alreadyChecked) {
+ 250 
+ 251         // We want to generate stubs for all remote and implementation types,
+ 252         // so collect them up.
+ 253         //
+ 254         // We use the form of collectMatching which allows us to pass in a set of
+ 255         // types which have previously been checked. By doing so, we ensure that if
+ 256         // the command line contains Hello and HelloImpl, we will only generate
+ 257         // output for Hello once...
+ 258 
+ 259         int filter = TYPE_REMOTE | TYPE_IMPLEMENTATION;
+ 260         Type[] genTypes = topType.collectMatching(filter,alreadyChecked);
+ 261         int count = genTypes.length;
+ 262         Vector list = new Vector(count+5);
+ 263         BatchEnvironment theEnv = topType.getEnv();
+ 264 
+ 265         // Now walk all types...
+ 266 
+ 267         for (int i = 0; i &lt; genTypes.length; i++) {
+ 268 
+ 269             Type type = genTypes[i];
+ 270             String typeName = type.getName();
+ 271             boolean createStub = true;
+ 272 
+ 273             // Is it an implementation type?
+ 274 
+ 275             if (type instanceof ImplementationType) {
+ 276 
+ 277                 // Yes, so add a tie for it...
+ 278 
+ 279                 list.addElement(new OutputType(Utility.tieNameForCompiler(typeName), type));
+ 280 
+ 281                 // Does it have more than 1 remote interface?  If so, we
+ 282                 // want to create a stub for it...
+ 283 
+ 284                 int remoteInterfaceCount = 0;
+ 285                 InterfaceType[] interfaces = ((CompoundType)type).getInterfaces();
+ 286                 for (int j = 0; j &lt; interfaces.length; j++) {
+ 287                     if (interfaces[j].isType(TYPE_REMOTE) &amp;&amp;
+ 288                         !interfaces[j].isType(TYPE_ABSTRACT)) {
+ 289                         remoteInterfaceCount++;
+ 290                     }
+ 291                 }
+ 292 
+ 293                 if (remoteInterfaceCount &lt;= 1) {
+ 294 
+ 295                     // No, so do not create a stub for this type...
+ 296 
+ 297                     createStub = false;
+ 298                 }
+ 299             }
+ 300 
+ 301             // Is it an abstract interface type?
+ 302 
+ 303             if (type instanceof AbstractType) {
+ 304 
+ 305                 // Do not create a stub for this type...
+ 306 
+ 307                 createStub = false;  // d11141
+ 308             }
+ 309 
+ 310             if (createStub) {
+ 311 
+ 312                 // Add a stub for the type...
+ 313 
+ 314                 list.addElement(new OutputType(Utility.stubNameForCompiler(typeName), type));
+ 315             }
+ 316         }
+ 317 
+ 318         // Copy list into array..
+ 319 
+ 320         OutputType[] outputTypes = new OutputType[list.size()];
+ 321         list.copyInto(outputTypes);
+ 322         return outputTypes;
+ 323     }
+ 324 
+ 325     /**
+ 326      * Return the file name extension for the given file name (e.g. ".java").
+ 327      * All files generated with the ".java" extension will be compiled. To
+ 328      * change this behavior for ".java" files, override the compileJavaSourceFile
+ 329      * method to return false.
+ 330      * @param outputType One of the items returned by getOutputTypesFor(...)
+ 331      */
+ 332     protected String getFileNameExtensionFor(OutputType outputType) {
+ 333         return SOURCE_FILE_EXTENSION;
+ 334     }
+ 335 
+ 336     /**
+ 337      * Write the output for the given OutputFileName into the output stream.
+ 338      * @param name One of the items returned by getOutputTypesFor(...)
+ 339      * @param alreadyChecked A set of Types which have already been checked.
+ 340      *  Intended to be passed to Type.collectMatching(filter,alreadyChecked).
+ 341      * @param writer The output stream.
+ 342      */
+ 343     protected void writeOutputFor(      OutputType outputType,
+ 344                                         HashSet alreadyChecked,
+ 345                                         IndentingWriter writer) throws IOException {
+ 346 
+ 347         String fileName = outputType.getName();
+ 348         CompoundType theType = (CompoundType) outputType.getType();
+ 349 
+ 350         // Are we doing a Stub or Tie?
+ 351 
+ 352         if (fileName.endsWith(Utility.RMI_STUB_SUFFIX)) {
+ 353 
+ 354             // Stub.
+ 355 
+ 356             writeStub(outputType,writer);
+ 357 
+ 358         } else {
+ 359 
+ 360             // Tie
+ 361 
+ 362             writeTie(outputType,writer);
+ 363         }
+ 364     }
+ 365 
+ 366     /**
+ 367      * Write a stub for the specified type.
+ 368      */
+ 369     protected void writeStub(OutputType outputType,
+ 370                              IndentingWriter p) throws IOException {
+ 371 
+ 372         CompoundType theType = (CompoundType) outputType.getType();
+ 373         RemoteType[] remoteInterfaces = getDirectRemoteInterfaces(theType);
+ 374 
+ 375         // Write comment.
+ 376 
+ 377         p.pln("// Stub class generated by rmic, do not edit.");
+ 378         p.pln("// Contents subject to change without notice.");
+ 379         p.pln();
+ 380 
+ 381         // Set our standard classes...
+ 382 
+ 383         setStandardClassesInUse(theType,true);
+ 384 
+ 385         // Add classes for this type...
+ 386 
+ 387         addClassesInUse(theType,remoteInterfaces);
+ 388 
+ 389         // Write package and import statements...
+ 390 
+ 391         writePackageAndImports(p);
+ 392 
+ 393         // Declare the stub class; implement all remote interfaces.
+ 394 
+ 395         p.p("public class " + currentClass);
+ 396         p.p(" extends " + getName(stubBaseClass));
+ 397         p.p(" implements ");
+ 398         if (remoteInterfaces.length &gt; 0) {
+ 399             for(int i = 0; i &lt; remoteInterfaces.length; i++) {
+ 400                 if (i &gt; 0) {
+ 401                     p.pln(",");
+ 402                 }
+ 403                 String objName = testUtil(getName(remoteInterfaces[i]), theType);
+ 404                 p.p(objName);
+ 405             }
+ 406         }
+ 407 
+ 408         // Add java.rmi.Remote if this type does not implement it.
+ 409         // This allows stubs for Abstract interfaces to be treated
+ 410         // uniformly...
+ 411 
+ 412         if (!implementsRemote(theType)) {
+ 413             p.pln(",");
+ 414             p.p(getName("java.rmi.Remote"));
+ 415         }
+ 416 
+ 417         p.plnI(" {");
+ 418         p.pln();
+ 419 
+ 420         // Write the ids...
+ 421 
+ 422         writeIds( p, theType, false );
+ 423         p.pln();
+ 424 
+ 425         // Write the _ids() method...
+ 426 
+ 427         p.plnI("public String[] _ids() { ");
+ 428         p.pln("return (String[]) _type_ids.clone();");
+ 429         p.pOln("}");
+ 430 
+ 431         // Get all the methods and write each stub method...
+ 432 
+ 433         CompoundType.Method[] remoteMethods = theType.getMethods();
+ 434         int methodCount = remoteMethods.length;
+ 435         if (methodCount &gt; 0) {
+ 436             boolean writeHeader = true;
+ 437             for(int i = 0; i &lt; methodCount; i++) {
+ 438                 if (!remoteMethods[i].isConstructor()) {
+ 439                     if (writeHeader) {
+ 440                         writeHeader = false;
+ 441                     }
+ 442                     p.pln();
+ 443                     writeStubMethod(p, remoteMethods[i], theType);
+ 444                 }
+ 445             }
+ 446         }
+ 447 
+ 448         // Write the cast array hack...
+ 449 
+ 450         writeCastArray(p);
+ 451 
+ 452         p.pOln("}");            // end stub class
+ 453     }
+ 454 
+ 455     void addClassInUse(String qualifiedName) {
+ 456         String unqualifiedName = qualifiedName;
+ 457         String packageName = null;
+ 458         int index = qualifiedName.lastIndexOf('.');
+ 459         if (index &gt; 0) {
+ 460             unqualifiedName = qualifiedName.substring(index+1);
+ 461             packageName = qualifiedName.substring(0,index);
+ 462         }
+ 463         addClassInUse(unqualifiedName,qualifiedName,packageName);
+ 464     }
+ 465 
+ 466     void addClassInUse(Type type) {
+ 467         if (!type.isPrimitive()) {
+ 468             Identifier id = type.getIdentifier();
+ 469             String name = IDLNames.replace(id.getName().toString(),". ",".");
+ 470             String packageName = type.getPackageName();
+ 471             String qualifiedName;
+ 472             if (packageName != null) {
+ 473                 qualifiedName = packageName+"."+name;
+ 474             } else {
+ 475                 qualifiedName = name;
+ 476             }
+ 477             addClassInUse(name,qualifiedName,packageName);
+ 478         }
+ 479     }
+ 480 
+ 481     void addClassInUse(Type[] types) {
+ 482         for (int i = 0; i &lt; types.length; i++) {
+ 483             addClassInUse(types[i]);
+ 484         }
+ 485     }
+ 486 
+ 487     void addStubInUse(Type type) {
+ 488         if (type.getIdentifier() != idCorbaObject &amp;&amp;
+ 489             type.isType(TYPE_CORBA_OBJECT)) {
+ 490             String stubName = getStubNameFor(type,false);
+ 491             String packageName = type.getPackageName();
+ 492             String fullName;
+ 493             if (packageName == null) {
+ 494                 fullName = stubName;
+ 495             } else {
+ 496                 fullName = packageName + "." + stubName;
+ 497             }
+ 498             addClassInUse(stubName,fullName,packageName);
+ 499         }
+ 500         if (type.isType(TYPE_REMOTE) ||
+ 501             type.isType(TYPE_JAVA_RMI_REMOTE)) {
+ 502             addClassInUse("javax.rmi.PortableRemoteObject");
+ 503         }
+ 504     }
+ 505 
+ 506     String getStubNameFor(Type type, boolean qualified) {
+ 507         String stubName;
+ 508         String className;
+ 509         if (qualified) {
+ 510             className = type.getQualifiedName();
+ 511         } else {
+ 512             className = type.getName();
+ 513         }
+ 514         if (((CompoundType)type).isCORBAObject()) {
+ 515             stubName = Utility.idlStubName(className);
+ 516         } else {
+ 517             stubName = Utility.stubNameForCompiler(className);
+ 518         }
+ 519         return stubName;
+ 520     }
+ 521 
+ 522     void addStubInUse(Type[] types) {
+ 523         for (int i = 0; i &lt; types.length; i++) {
+ 524             addStubInUse(types[i]);
+ 525         }
+ 526     }
+ 527 
+ 528     private static final String NO_IMPORT = new String();
+ 529 
+ 530     void addClassInUse(String unqualifiedName, String qualifiedName, String packageName) {
+ 531 
+ 532         // Have we already got an entry for this qualifiedName?
+ 533 
+ 534         String currentName = (String)classesInUse.get(qualifiedName);
+ 535 
+ 536         if (currentName == null) {
+ 537 
+ 538             // No, never seen it before. Grab any existing import
+ 539             // name and then decide what to do...
+ 540 
+ 541             String importName = (String) imports.get(unqualifiedName);
+ 542             String nameToUse = null;
+ 543 
+ 544             if (packageName == null) {
+ 545 
+ 546                 // Default package, so doesn't matter which name to use...
+ 547 
+ 548                 nameToUse = unqualifiedName;
+ 549 
+ 550             } else if (packageName.equals("java.lang")) {
+ 551 
+ 552                 // java.lang.*, so use unqualified name...
+ 553 
+ 554                 nameToUse = unqualifiedName;
+ 555 
+ 556                 // unless you want to be able to import things from the right place :--)
+ 557 
+ 558                 if(nameToUse.endsWith("_Stub")) nameToUse = Util.packagePrefix()+qualifiedName;
+ 559 
+ 560             } else if (currentPackage != null &amp;&amp; packageName.equals(currentPackage)) {
+ 561 
+ 562                 // Class in currentPackage, so use unqualified name...
+ 563 
+ 564                 nameToUse = unqualifiedName;
+ 565 
+ 566                 // Do we already have a previous import under this
+ 567                 // unqualified name?
+ 568 
+ 569                 if (importName != null) {
+ 570 
+ 571                     // Yes, so we use qualifiedName...
+ 572 
+ 573                     nameToUse = qualifiedName;
+ 574 
+ 575                 }
+ 576 
+ 577             } else if (importName != null) {
+ 578 
+ 579                 // It is in some package for which we normally
+ 580                 // would import, but we have a previous import
+ 581                 // under this unqualified name. We must use
+ 582                 // the qualified name...
+ 583 
+ 584                 nameToUse = qualifiedName;
+ 585 
+ 586                 /*
+ 587                   // Is the currentPackage the default package?
+ 588 
+ 589                   if (currentPackage == null) {
+ 590 
+ 591                   // Yes, so undo the import so that all
+ 592                   // uses for this name will be qualified...
+ 593 
+ 594                   String old = (String)imports.remove(unqualifiedName);
+ 595                   classesInUse.put(old,old);
+ 596                   importCount--;
+ 597 
+ 598                   // Note that this name is in use but should
+ 599                   // not be imported...
+ 600 
+ 601                   imports.put(nameToUse,NO_IMPORT);
+ 602                   }
+ 603                 */
+ 604             } else if (qualifiedName.equals("org.omg.CORBA.Object")) {
+ 605 
+ 606                 // Always qualify this quy to avoid confusion...
+ 607 
+ 608                 nameToUse = qualifiedName;
+ 609 
+ 610             } else {
+ 611 
+ 612                 // Default to using unqualified name, and add
+ 613                 // this guy to the imports...
+ 614 
+ 615                 // Check for nested class in which case we use
+ 616                 // the fully qualified name instead of imports
+ 617                 if (unqualifiedName.indexOf('.') != -1) {
+ 618                     nameToUse = qualifiedName;
+ 619                 } else {
+ 620                     nameToUse = unqualifiedName;
+ 621                     imports.put(unqualifiedName,qualifiedName);
+ 622                     importCount++;
+ 623                 }
+ 624             }
+ 625 
+ 626             // Now add the name...
+ 627 
+ 628             classesInUse.put(qualifiedName,nameToUse);
+ 629         }
+ 630     }
+ 631 
+ 632     String getName(Type type) {
+ 633         if (type.isPrimitive()) {
+ 634             return type.getName() + type.getArrayBrackets();
+ 635         }
+ 636         Identifier id = type.getIdentifier();
+ 637         String name = IDLNames.replace(id.toString(),". ",".");
+ 638         return getName(name) + type.getArrayBrackets();
+ 639     }
+ 640 
+ 641     // Added for Bug 4818753
+ 642     String getExceptionName(Type type) {
+ 643         Identifier id = type.getIdentifier();
+ 644         return IDLNames.replace(id.toString(),". ",".");
+ 645     }
+ 646 
+ 647     String getName(String qualifiedName) {
+ 648         return (String)classesInUse.get(qualifiedName);
+ 649     }
+ 650 
+ 651     String getName(Identifier id) {
+ 652         return getName(id.toString());
+ 653     }
+ 654 
+ 655     String getStubName(Type type) {
+ 656         String stubName = getStubNameFor(type,true);
+ 657         return getName(stubName);
+ 658     }
+ 659 
+ 660     void setStandardClassesInUse(CompoundType type,
+ 661                                  boolean stub) throws IOException {
+ 662 
+ 663         // Reset our state...
+ 664 
+ 665         currentPackage = type.getPackageName();
+ 666         imports.clear();
+ 667         classesInUse.clear();
+ 668         namesInUse.clear();
+ 669         importCount = 0;
+ 670         castArray = false;
+ 671 
+ 672         // Add the top-level type...
+ 673 
+ 674         addClassInUse(type);
+ 675 
+ 676         // Set current class name...
+ 677 
+ 678         if (stub) {
+ 679             currentClass = Utility.stubNameForCompiler(type.getName());
+ 680         } else {
+ 681             currentClass = Utility.tieNameForCompiler(type.getName());
+ 682         }
+ 683 
+ 684         // Add current class...
+ 685 
+ 686         if (currentPackage == null) {
+ 687             addClassInUse(currentClass,currentClass,currentPackage);
+ 688         } else {
+ 689             addClassInUse(currentClass,(currentPackage+"."+currentClass),currentPackage);
+ 690         }
+ 691 
+ 692         // Add standard classes...
+ 693 
+ 694         addClassInUse("javax.rmi.CORBA.Util");
+ 695         addClassInUse(idRemote.toString());
+ 696         addClassInUse(idRemoteException.toString());
+ 697         addClassInUse(idOutputStream.toString());
+ 698         addClassInUse(idInputStream.toString());
+ 699         addClassInUse(idSystemException.toString());
+ 700         addClassInUse(idJavaIoSerializable.toString());
+ 701         addClassInUse(idCorbaORB.toString());
+ 702         addClassInUse(idReplyHandler.toString());
+ 703 
+ 704         // Add stub/tie specific imports...
+ 705 
+ 706         if (stub) {
+ 707             addClassInUse(stubBaseClass);
+ 708             addClassInUse("java.rmi.UnexpectedException");
+ 709             addClassInUse(idRemarshalException.toString());
+ 710             addClassInUse(idApplicationException.toString());
+ 711             if (localStubs) {
+ 712                 addClassInUse("org.omg.CORBA.portable.ServantObject");
+ 713             }
+ 714         } else {
+ 715             addClassInUse(type);
+ 716             addClassInUse(tieBaseClass);
+ 717             addClassInUse(idTieInterface.toString());
+ 718             addClassInUse(idBadMethodException.toString());
+ 719             addClassInUse(idPortableUnknownException.toString());
+ 720             addClassInUse(idJavaLangThrowable.toString());
+ 721         }
+ 722     }
+ 723 
+ 724     void addClassesInUse(CompoundType type, RemoteType[] interfaces) {
+ 725 
+ 726         // Walk all methods and add types in use...
+ 727 
+ 728         CompoundType.Method[] methods = type.getMethods();
+ 729         for (int i = 0; i &lt; methods.length; i++) {
+ 730             addClassInUse(methods[i].getReturnType());
+ 731             addStubInUse(methods[i].getReturnType());
+ 732             addClassInUse(methods[i].getArguments());
+ 733             addStubInUse(methods[i].getArguments());
+ 734             addClassInUse(methods[i].getExceptions());
+ 735             // bug 4473859: Also include narrower subtypes for use
+ 736             addClassInUse(methods[i].getImplExceptions());
+ 737         }
+ 738 
+ 739         // If this is a stub, add all interfaces...
+ 740 
+ 741         if (interfaces != null) {
+ 742             addClassInUse(interfaces);
+ 743         }
+ 744     }
+ 745 
+ 746     void writePackageAndImports(IndentingWriter p) throws IOException {
+ 747 
+ 748         // Write package declaration...
+ 749 
+ 750         if (currentPackage != null) {
+ 751             p.pln("package " +
+ 752                      Util.correctPackageName(
+ 753                           currentPackage, false, standardPackage)
+ 754                    + ";");
+ 755             p.pln();
+ 756         }
+ 757 
+ 758         // Get imports into an array and sort them...
+ 759 
+ 760         String[] names = new String[importCount];
+ 761         int index = 0;
+ 762         for (Enumeration e = imports.elements() ; e.hasMoreElements() ;) {
+ 763             String it = (String) e.nextElement();
+ 764             if (it != NO_IMPORT) {
+ 765                 names[index++] = it;
+ 766             }
+ 767         }
+ 768 
+ 769         Arrays.sort(names,new StringComparator());
+ 770 
+ 771         // Now dump them out...
+ 772 
+ 773         for (int i = 0; i &lt; importCount; i++) {
+ 774             if(
+ 775                Util.isOffendingPackage(names[i])
+ 776                &amp;&amp; names[i].endsWith("_Stub")
+ 777                &amp;&amp; String.valueOf(names[i].charAt(names[i].lastIndexOf(".")+1)).equals("_")
+ 778                ){
+ 779                 p.pln("import " + PackagePrefixChecker.packagePrefix()+names[i]+";");
+ 780             } else{
+ 781                 p.pln("import " + names[i] + ";");
+ 782             }
+ 783         }
+ 784         p.pln();
+ 785 
+ 786         // Include offending packages . . .
+ 787         if ( currentPackage!=null &amp;&amp; Util.isOffendingPackage(currentPackage) ){
+ 788             p.pln("import " + currentPackage +".*  ;");
+ 789         }
+ 790         p.pln();
+ 791 
+ 792     }
+ 793 
+ 794     boolean implementsRemote(CompoundType theType) {
+ 795         boolean result = theType.isType(TYPE_REMOTE) &amp;&amp; !theType.isType(TYPE_ABSTRACT);
+ 796 
+ 797         // If theType is not remote, look at all the interfaces
+ 798         // until we find one that is...
+ 799 
+ 800         if (!result) {
+ 801             InterfaceType[] interfaces = theType.getInterfaces();
+ 802             for (int i = 0; i &lt; interfaces.length; i++) {
+ 803                 result = implementsRemote(interfaces[i]);
+ 804                 if (result) {
+ 805                     break;
+ 806                 }
+ 807             }
+ 808         }
+ 809 
+ 810         return result;
+ 811     }
+ 812 
+ 813     void writeStubMethod (  IndentingWriter p,
+ 814                             CompoundType.Method method,
+ 815                             CompoundType theType) throws IOException {
+ 816 
+ 817         // Wtite the method declaration and opening brace...
+ 818 
+ 819         String methodName = method.getName();
+ 820         String methodIDLName = method.getIDLName();
+ 821 
+ 822         Type paramTypes[] = method.getArguments();
+ 823         String paramNames[] = method.getArgumentNames();
+ 824         Type returnType = method.getReturnType();
+ 825         ValueType[] exceptions = getStubExceptions(method,false);
+ 826 
+ 827         addNamesInUse(method);
+ 828         addNameInUse("_type_ids");
+ 829 
+ 830         String objName = testUtil(getName(returnType), returnType);
+ 831         p.p("public " + objName + " " + methodName + "(");
+ 832         for(int i = 0; i &lt; paramTypes.length; i++) {
+ 833             if (i &gt; 0)
+ 834                 p.p(", ");
+ 835             p.p(getName(paramTypes[i]) + " " + paramNames[i]);
+ 836         }
+ 837 
+ 838         p.p(")");
+ 839         if (exceptions.length &gt; 0) {
+ 840             p.p(" throws ");
+ 841             for(int i = 0; i &lt; exceptions.length; i++) {
+ 842                 if (i &gt; 0) {
+ 843                     p.p(", ");
+ 844                 }
+ 845                 // Added for Bug 4818753
+ 846                 p.p(getExceptionName(exceptions[i]));
+ 847             }
+ 848         }
+ 849 
+ 850         p.plnI(" {");
+ 851 
+ 852         // Now create the method body...
+ 853 
+ 854         if (localStubs) {
+ 855             writeLocalStubMethodBody(p,method,theType);
+ 856         } else {
+ 857             writeNonLocalStubMethodBody(p,method,theType);
+ 858         }
+ 859 
+ 860         // Close out the method...
+ 861 
+ 862         p.pOln("}");
+ 863     }
+ 864 
+ 865 
+ 866     void writeLocalStubMethodBody (IndentingWriter p,
+ 867                                    CompoundType.Method method,
+ 868                                    CompoundType theType) throws IOException {
+ 869 
+ 870         String objName;
+ 871         String paramNames[] = method.getArgumentNames();
+ 872         Type returnType = method.getReturnType();
+ 873         ValueType[] exceptions = getStubExceptions(method,false);
+ 874         String methodName = method.getName();
+ 875         String methodIDLName = method.getIDLName();
+ 876 
+ 877         p.plnI("if (!Util.isLocal(this)) {");
+ 878         writeNonLocalStubMethodBody(p,method,theType);
+ 879         p.pOlnI("} else {");
+ 880         String so = getVariableName("so");
+ 881 
+ 882         p.pln("ServantObject "+so+" = _servant_preinvoke(\""+methodIDLName+"\","+getName(theType)+".class);");
+ 883         p.plnI("if ("+so+" == null) {");
+ 884         if (!returnType.isType(TYPE_VOID)) {
+ 885             p.p("return ");
+ 886         }
+ 887         p.p(methodName+"(");
+ 888         for (int i = 0; i &lt; paramNames.length; i++) {
+ 889             if (i &gt; 0)
+ 890                 p.p(", ");
+ 891             p.p(paramNames[i]);
+ 892         }
+ 893         p.pln(");");
+ 894         if (returnType.isType(TYPE_VOID)) {
+ 895             p.pln( "return ;" ) ;
+ 896         }
+ 897 
+ 898         p.pOln("}");
+ 899         p.plnI("try {");
+ 900 
+ 901         // Generate code to copy required arguments, and
+ 902         // get back the names by which all arguments are known...
+ 903 
+ 904         String[] argNames = writeCopyArguments(method,p);
+ 905 
+ 906         // Now write the method...
+ 907 
+ 908         boolean copyReturn = mustCopy(returnType);
+ 909         String resultName = null;
+ 910         if (!returnType.isType(TYPE_VOID)) {
+ 911             if (copyReturn) {
+ 912                 resultName = getVariableName("result");
+ 913                 objName = testUtil(getName(returnType), returnType);
+ 914                 p.p(objName+" "+resultName + " = ");
+ 915             } else {
+ 916                 p.p("return ");
+ 917             }
+ 918         }
+ 919         objName = testUtil(getName(theType), theType);
+ 920         p.p("(("+objName+")"+so+".servant)."+methodName+"(");
+ 921 
+ 922         for (int i = 0; i &lt; argNames.length; i++) {
+ 923             if (i &gt; 0)
+ 924                 p.p(", ");
+ 925             p.p(argNames[i]);
+ 926         }
+ 927 
+ 928         if (copyReturn) {
+ 929             p.pln(");");
+ 930             objName = testUtil(getName(returnType), returnType);
+ 931             p.pln("return ("+objName+")Util.copyObject("+resultName+",_orb());");
+ 932         } else {
+ 933             p.pln(");");
+ 934         }
+ 935 
+ 936         String e1 = getVariableName("ex");
+ 937         String e2 = getVariableName("exCopy");
+ 938         p.pOlnI("} catch (Throwable "+e1+") {");
+ 939 
+ 940         p.pln("Throwable "+e2+" = (Throwable)Util.copyObject("+e1+",_orb());");
+ 941         for(int i = 0; i &lt; exceptions.length; i++) {
+ 942             if (exceptions[i].getIdentifier() != idRemoteException &amp;&amp;
+ 943                 exceptions[i].isType(TYPE_VALUE)) {
+ 944                 // Added for Bug 4818753
+ 945                 p.plnI("if ("+e2+" instanceof "+getExceptionName(exceptions[i])+") {");
+ 946                 p.pln("throw ("+getExceptionName(exceptions[i])+")"+e2+";");
+ 947                 p.pOln("}");
+ 948             }
+ 949         }
+ 950 
+ 951         p.pln("throw Util.wrapException("+e2+");");
+ 952         p.pOlnI("} finally {");
+ 953         p.pln("_servant_postinvoke("+so+");");
+ 954         p.pOln("}");
+ 955         p.pOln("}");
+ 956     }
+ 957 
+ 958 
+ 959     void writeNonLocalStubMethodBody (  IndentingWriter p,
+ 960                                         CompoundType.Method method,
+ 961                                         CompoundType theType) throws IOException {
+ 962 
+ 963         String methodName = method.getName();
+ 964         String methodIDLName = method.getIDLName();
+ 965 
+ 966         Type paramTypes[] = method.getArguments();
+ 967         String paramNames[] = method.getArgumentNames();
+ 968         Type returnType = method.getReturnType();
+ 969         ValueType[] exceptions = getStubExceptions(method,true);
+ 970 
+ 971         String in = getVariableName("in");
+ 972         String out = getVariableName("out");
+ 973         String ex = getVariableName("ex");
+ 974 
+ 975         // Decide if we need to use the new streams for
+ 976         // any of the read calls...
+ 977 
+ 978         boolean needNewReadStreamClass = false;
+ 979         for (int i = 0; i &lt; exceptions.length; i++) {
+ 980             if (exceptions[i].getIdentifier() != idRemoteException &amp;&amp;
+ 981                 exceptions[i].isType(TYPE_VALUE) &amp;&amp;
+ 982                 needNewReadStreamClass(exceptions[i])) {
+ 983                 needNewReadStreamClass = true;
+ 984                 break;
+ 985             }
+ 986         }
+ 987         if (!needNewReadStreamClass) {
+ 988             for (int i = 0; i &lt; paramTypes.length; i++) {
+ 989                 if (needNewReadStreamClass(paramTypes[i])) {
+ 990                     needNewReadStreamClass = true;
+ 991                     break;
+ 992                 }
+ 993             }
+ 994         }
+ 995         if (!needNewReadStreamClass) {
+ 996             needNewReadStreamClass = needNewReadStreamClass(returnType);
+ 997         }
+ 998 
+ 999         // Decide if we need to use the new streams for
+1000         // any of the write calls...
+1001 
+1002         boolean needNewWriteStreamClass = false;
+1003         for (int i = 0; i &lt; paramTypes.length; i++) {
+1004             if (needNewWriteStreamClass(paramTypes[i])) {
+1005                 needNewWriteStreamClass = true;
+1006                 break;
+1007             }
+1008         }
+1009 
+1010         // Now write the method, inserting casts where needed...
+1011 
+1012         p.plnI("try {");
+1013         if (needNewReadStreamClass) {
+1014             p.pln(idExtInputStream + " "+in+" = null;");
+1015         } else {
+1016             p.pln(idInputStream + " "+in+" = null;");
+1017         }
+1018         p.plnI("try {");
+1019 
+1020         String argStream = "null";
+1021 
+1022         if (needNewWriteStreamClass) {
+1023             p.plnI(idExtOutputStream + " "+out+" = ");
+1024             p.pln("(" + idExtOutputStream + ")");
+1025             p.pln("_request(\"" + methodIDLName + "\", true);");
+1026             p.pO();
+1027         } else {
+1028             p.pln("OutputStream "+out+" = _request(\"" + methodIDLName + "\", true);");
+1029         }
+1030 
+1031         if (paramTypes.length &gt; 0) {
+1032             writeMarshalArguments(p, out, paramTypes, paramNames);
+1033             p.pln();
+1034         }
+1035         argStream = out;
+1036 
+1037         if (returnType.isType(TYPE_VOID)) {
+1038             p.pln("_invoke(" + argStream + ");" );
+1039         } else {
+1040             if (needNewReadStreamClass) {
+1041                 p.plnI(in+" = (" + idExtInputStream + ")_invoke(" + argStream + ");");
+1042                 p.pO();
+1043             } else {
+1044                 p.pln(in+" = _invoke(" + argStream + ");");
+1045             }
+1046             p.p("return ");
+1047             writeUnmarshalArgument(p, in, returnType, null);
+1048             p.pln();
+1049         }
+1050 
+1051         // Handle ApplicationException...
+1052 
+1053         p.pOlnI("} catch ("+getName(idApplicationException)+" "+ex+") {");
+1054         if (needNewReadStreamClass) {
+1055             p.pln(in + " = (" + idExtInputStream + ") "+ex+".getInputStream();");
+1056         } else {
+1057             p.pln(in + " = "+ex+".getInputStream();");
+1058         }
+1059 
+1060         boolean idRead = false;
+1061         boolean idAllocated = false;
+1062         for(int i = 0; i &lt; exceptions.length; i++) {
+1063             if (exceptions[i].getIdentifier() != idRemoteException) {
+1064 
+1065                 // Is this our special-case IDLEntity exception?
+1066 
+1067                 if (exceptions[i].isIDLEntityException() &amp;&amp; !exceptions[i].isCORBAUserException()) {
+1068 
+1069                     // Yes.
+1070 
+1071                     if (!idAllocated &amp;&amp; !idRead) {
+1072                         p.pln("String $_id = "+ex+".getId();");
+1073                         idAllocated = true;
+1074                     }
+1075 
+1076                     String helperName = IDLNames.replace(exceptions[i].getQualifiedIDLName(false),"::",".");
+1077                     helperName += "Helper";
+1078                     p.plnI("if ($_id.equals("+helperName+".id())) {");
+1079                     p.pln("throw "+helperName+".read("+in+");");
+1080 
+1081                 } else {
+1082 
+1083                     // No.
+1084 
+1085                     if (!idAllocated &amp;&amp; !idRead) {
+1086         p.pln("String $_id = "+in+".read_string();");
+1087                         idAllocated = true;
+1088                         idRead = true;
+1089                     } else if (idAllocated &amp;&amp; !idRead) {
+1090                         p.pln("$_id = "+in+".read_string();");
+1091                         idRead = true;
+1092                     }
+1093                     p.plnI("if ($_id.equals(\""+getExceptionRepositoryID(exceptions[i])+"\")) {");
+1094                     // Added for Bug 4818753
+1095                     p.pln("throw ("+getExceptionName(exceptions[i])+") "+in+".read_value(" + getExceptionName(exceptions[i]) + ".class);");
+1096                 }
+1097                 p.pOln("}");
+1098             }
+1099         }
+1100         if (!idAllocated &amp;&amp; !idRead) {
+1101             p.pln("String $_id = "+in+".read_string();");
+1102             idAllocated = true;
+1103             idRead = true;
+1104         } else if (idAllocated &amp;&amp; !idRead) {
+1105             p.pln("$_id = "+in+".read_string();");
+1106             idRead = true;
+1107         }
+1108         p.pln("throw new UnexpectedException($_id);");
+1109 
+1110         // Handle RemarshalException...
+1111 
+1112         p.pOlnI("} catch ("+getName(idRemarshalException)+" "+ex+") {");
+1113         if (!returnType.isType(TYPE_VOID)) {
+1114             p.p("return ");
+1115         }
+1116         p.p(methodName + "(");
+1117         for(int i = 0; i &lt; paramTypes.length; i++) {
+1118             if (i &gt; 0) {
+1119                 p.p(",");
+1120             }
+1121             p.p(paramNames[i]);
+1122         }
+1123         p.pln(");");
+1124 
+1125         // Ensure that we release the reply...
+1126 
+1127         p.pOlnI("} finally {");
+1128         p.pln("_releaseReply("+in+");");
+1129 
+1130         p.pOln("}");
+1131 
+1132         // Handle SystemException...
+1133 
+1134         p.pOlnI("} catch (SystemException "+ex+") {");
+1135         p.pln("throw Util.mapSystemException("+ex+");");
+1136         p.pOln("}");
+1137 
+1138         // returnResult(p,returnType);
+1139     }
+1140 
+1141     void allocateResult (IndentingWriter p,
+1142                          Type returnType) throws IOException {
+1143         if (!returnType.isType(TYPE_VOID)) {
+1144             String objName = testUtil(getName(returnType), returnType);
+1145             p.p(objName + " result = ");
+1146         }
+1147     }
+1148 
+1149     int getTypeCode(Type type) {
+1150 
+1151         int typeCode = type.getTypeCode();
+1152 
+1153         // Handle late-breaking special case for
+1154         // abstract IDL entities...
+1155 
+1156         if ((type instanceof CompoundType) &amp;&amp;
+1157             ((CompoundType)type).isAbstractBase()) {
+1158             typeCode = TYPE_ABSTRACT;
+1159         }
+1160 
+1161         return typeCode;
+1162     }
+1163 
+1164 
+1165     /**
+1166      * Write a snippet of Java code to marshal a value named "name" of
+1167      * type "type" to the java.io.ObjectOutput stream named "stream".
+1168      */
+1169     void writeMarshalArgument(IndentingWriter p,
+1170                               String streamName,
+1171                               Type type, String name) throws IOException {
+1172 
+1173         int typeCode = getTypeCode(type);
+1174 
+1175         switch (typeCode) {
+1176         case TYPE_BOOLEAN:
+1177             p.p(streamName + ".write_boolean(" + name + ");");
+1178             break;
+1179         case TYPE_BYTE:
+1180             p.p(streamName + ".write_octet(" + name + ");");
+1181             break;
+1182         case TYPE_CHAR:
+1183             p.p(streamName + ".write_wchar(" + name + ");");
+1184             break;
+1185         case TYPE_SHORT:
+1186             p.p(streamName + ".write_short(" + name + ");");
+1187             break;
+1188         case TYPE_INT:
+1189             p.p(streamName + ".write_long(" + name + ");");
+1190             break;
+1191         case TYPE_LONG:
+1192             p.p(streamName + ".write_longlong(" + name + ");");
+1193             break;
+1194         case TYPE_FLOAT:
+1195             p.p(streamName + ".write_float(" + name + ");");
+1196             break;
+1197         case TYPE_DOUBLE:
+1198             p.p(streamName + ".write_double(" + name + ");");
+1199             break;
+1200         case TYPE_STRING:
+1201             p.p(streamName + ".write_value(" + name + "," + getName(type) + ".class);");
+1202             break;
+1203         case TYPE_ANY:
+1204             p.p("Util.writeAny("+ streamName + "," + name + ");");
+1205             break;
+1206         case TYPE_CORBA_OBJECT:
+1207             p.p(streamName + ".write_Object(" + name + ");");
+1208             break;
+1209         case TYPE_REMOTE:
+1210             p.p("Util.writeRemoteObject("+ streamName + "," + name + ");");
+1211             break;
+1212         case TYPE_ABSTRACT:
+1213             p.p("Util.writeAbstractObject("+ streamName + "," + name + ");");
+1214             break;
+1215         case TYPE_NC_INTERFACE:
+1216             p.p(streamName + ".write_value((Serializable)" + name + "," + getName(type) + ".class);");
+1217             break;
+1218         case TYPE_VALUE:
+1219             p.p(streamName + ".write_value(" + name + "," + getName(type) + ".class);");
+1220             break;
+1221         case TYPE_IMPLEMENTATION:
+1222             p.p(streamName + ".write_value((Serializable)" + name + "," + getName(type) + ".class);");
+1223             break;
+1224         case TYPE_NC_CLASS:
+1225             p.p(streamName + ".write_value((Serializable)" + name + "," + getName(type) + ".class);");
+1226             break;
+1227         case TYPE_ARRAY:
+1228             castArray = true;
+1229             p.p(streamName + ".write_value(cast_array(" + name + ")," + getName(type) + ".class);");
+1230             break;
+1231         case TYPE_JAVA_RMI_REMOTE:
+1232             p.p("Util.writeRemoteObject("+ streamName + "," + name + ");");
+1233             break;
+1234         default:
+1235             throw new Error("unexpected type code: " + typeCode);
+1236         }
+1237     }
+1238 
+1239     /**
+1240      * Write a snippet of Java code to unmarshal a value of type "type"
+1241      * from the java.io.ObjectInput stream named "stream" into a variable
+1242      * named "name" (if "name" is null, the value in unmarshalled and
+1243      * discarded).
+1244      */
+1245     void writeUnmarshalArgument(IndentingWriter p,
+1246                                 String streamName,
+1247                                 Type type,
+1248                                 String name) throws IOException {
+1249 
+1250         int typeCode = getTypeCode(type);
+1251 
+1252         if (name != null) {
+1253             p.p(name + " = ");
+1254         }
+1255 
+1256         switch (typeCode) {
+1257         case TYPE_BOOLEAN:
+1258             p.p(streamName + ".read_boolean();");
+1259             break;
+1260         case TYPE_BYTE:
+1261             p.p(streamName + ".read_octet();");
+1262             break;
+1263         case TYPE_CHAR:
+1264             p.p(streamName + ".read_wchar();");
+1265             break;
+1266         case TYPE_SHORT:
+1267             p.p(streamName + ".read_short();");
+1268             break;
+1269         case TYPE_INT:
+1270             p.p(streamName + ".read_long();");
+1271             break;
+1272         case TYPE_LONG:
+1273             p.p(streamName + ".read_longlong();");
+1274             break;
+1275         case TYPE_FLOAT:
+1276             p.p(streamName + ".read_float();");
+1277             break;
+1278         case TYPE_DOUBLE:
+1279             p.p(streamName + ".read_double();");
+1280             break;
+1281         case TYPE_STRING:
+1282             p.p("(String) " + streamName + ".read_value(" + getName(type) + ".class);");
+1283             break;
+1284         case TYPE_ANY:
+1285             if (type.getIdentifier() != idJavaLangObject) {
+1286                 p.p("(" + getName(type) + ") ");
+1287             }
+1288             p.p("Util.readAny(" + streamName + ");");
+1289             break;
+1290         case TYPE_CORBA_OBJECT:
+1291             if (type.getIdentifier() == idCorbaObject) {
+1292                 p.p("(" + getName(type) + ") " + streamName + ".read_Object();");
+1293             } else {
+1294                 p.p("(" + getName(type) + ") " + streamName + ".read_Object(" + getStubName(type) + ".class);");
+1295             }
+1296             break;
+1297         case TYPE_REMOTE:
+1298             String objName = testUtil(getName(type), type);
+1299             p.p("(" + objName + ") " +
+1300                 "PortableRemoteObject.narrow(" + streamName + ".read_Object(), " + objName + ".class);");
+1301             break;
+1302         case TYPE_ABSTRACT:
+1303             p.p("(" + getName(type) + ") " + streamName + ".read_abstract_interface();");
+1304             break;
+1305         case TYPE_NC_INTERFACE:
+1306             p.p("(" + getName(type) + ") " + streamName + ".read_value(" + getName(type) + ".class);");
+1307             break;
+1308         case TYPE_VALUE:
+1309             p.p("(" + getName(type) + ") " + streamName + ".read_value(" + getName(type) + ".class);");
+1310             break;
+1311         case TYPE_IMPLEMENTATION:
+1312             p.p("(" + getName(type) + ") " + streamName + ".read_value(" + getName(type) + ".class);");
+1313             break;
+1314         case TYPE_NC_CLASS:
+1315             p.p("(" + getName(type) + ") " + streamName + ".read_value(" + getName(type) + ".class);");
+1316             break;
+1317         case TYPE_ARRAY:
+1318             p.p("(" + getName(type) + ") " + streamName + ".read_value(" + getName(type) + ".class);");
+1319             break;
+1320         case TYPE_JAVA_RMI_REMOTE:
+1321             p.p("(" + getName(type) + ") " +
+1322                 "PortableRemoteObject.narrow(" + streamName + ".read_Object(), " + getName(type) + ".class);");
+1323             //      p.p("(" + getName(type) + ") " + streamName + ".read_Object(" + getStubName(type) + ".class);");
+1324             break;
+1325         default:
+1326             throw new Error("unexpected type code: " + typeCode);
+1327         }
+1328     }
+1329 
+1330     /**
+1331      * Get a list of all the RepositoryIDs for interfaces
+1332      * implemented directly or indirectly by theType. In the
+1333      * case of an  ImplementationType which implements 2 or
+1334      * more remote interfaces, this list will begin with the
+1335      * Identifier for the implementation (see section 5.9 in
+1336      * the Java -&gt; IDL mapping). Ensures that the most derived
+1337      * type is first in the list because the IOR is generated
+1338      * using that entry in the _ids array.
+1339      */
+1340     String[] getAllRemoteRepIDs (CompoundType theType) {
+1341 
+1342         String[] result;
+1343 
+1344         // Collect up all the (inherited) remote interfaces
+1345         // (ignores all the 'special' interfaces: Remote,
+1346         // Serializable, Externalizable)...
+1347 
+1348         Type[] types = collectAllRemoteInterfaces(theType);
+1349 
+1350         int length = types.length;
+1351         boolean haveImpl = theType instanceof ImplementationType;
+1352         InterfaceType[] interfaces = theType.getInterfaces();
+1353         int remoteCount = countRemote(interfaces,false);
+1354         int offset = 0;
+1355 
+1356         // Do we have an implementation type that implements
+1357         // more than one remote interface?
+1358 
+1359         if (haveImpl &amp;&amp; remoteCount &gt; 1) {
+1360 
+1361             // Yes, so we need to insert it at the beginning...
+1362 
+1363             result = new String[length + 1];
+1364             result[0] = getRepositoryID(theType);
+1365             offset = 1;
+1366 
+1367         } else {
+1368 
+1369             // No.
+1370 
+1371             result = new String[length];
+1372 
+1373             // Here we need to ensure that the most derived
+1374             // interface ends up being first in the list. If
+1375             // there is only one, we're done.
+1376 
+1377             if (length &gt; 1) {
+1378 
+1379                 // First, decide what the most derived type is...
+1380 
+1381                 String mostDerived = null;
+1382 
+1383                 if (haveImpl) {
+1384 
+1385                     // If we get here, we know that there is only one
+1386                     // direct remote interface, so just find it...
+1387 
+1388                     for (int i = 0; i &lt; interfaces.length; i++) {
+1389                         if (interfaces[i].isType(TYPE_REMOTE)) {
+1390                             mostDerived = interfaces[i].getRepositoryID();
+1391                             break;
+1392                         }
+1393                     }
+1394                 } else {
+1395 
+1396                     // If we get here we know that theType is a RemoteType
+1397                     // so just use its id...
+1398 
+1399                     mostDerived = theType.getRepositoryID();
+1400                 }
+1401 
+1402                 // Now search types list and make sure mostDerived is
+1403                 // at index zero...
+1404 
+1405                 for (int i = 0; i &lt; length; i++) {
+1406                     if (types[i].getRepositoryID() == mostDerived) {
+1407 
+1408                         // Found it. Swap it if we need to...
+1409 
+1410                         if (i &gt; 0) {
+1411                             Type temp = types[0];
+1412                             types[0] = types[i];
+1413                             types[i] = temp;
+1414                         }
+1415 
+1416                         break;
+1417                     }
+1418                 }
+1419             }
+1420         }
+1421 
+1422         // Now copy contents of the types array...
+1423 
+1424         for (int i = 0; i &lt; types.length; i++) {
+1425             result[offset++] = getRepositoryID(types[i]);
+1426         }
+1427 
+1428         // If we're supposed to, reverse the array. This
+1429         // is only done when the -testReverseIDs flag is
+1430         // passed, and that should ONLY be done for test
+1431         // cases. This is an undocumented feature.
+1432 
+1433         if (reverseIDs) {
+1434             int start = 0;
+1435             int end = result.length -1;
+1436             while (start &lt; end) {
+1437                 String temp = result[start];
+1438                 result[start++] = result[end];
+1439                 result[end--] = temp;
+1440             }
+1441         }
+1442 
+1443         return result;
+1444     }
+1445 
+1446     /**
+1447      * Collect all the inherited remote interfaces.
+1448      */
+1449     Type[] collectAllRemoteInterfaces (CompoundType theType) {
+1450         Vector list = new Vector();
+1451 
+1452         // Collect up all the Remote interfaces, and get an instance
+1453         // for java.rmi.Remote...
+1454 
+1455         addRemoteInterfaces(list,theType);
+1456 
+1457         // Create and return our results...
+1458 
+1459         Type[] result = new Type[list.size()];
+1460         list.copyInto(result);
+1461 
+1462         return result;
+1463     }
+1464 
+1465     /**
+1466      * Add all the inherited remote interfaces to list.
+1467      */
+1468     void addRemoteInterfaces(Vector list, CompoundType theType) {
+1469 
+1470         if (theType != null) {
+1471             if (theType.isInterface() &amp;&amp; !list.contains(theType)) {
+1472                 list.addElement(theType);
+1473             }
+1474 
+1475             InterfaceType[] interfaces = theType.getInterfaces();
+1476             for (int i = 0; i &lt; interfaces.length; i++) {
+1477 
+1478                 if (interfaces[i].isType(TYPE_REMOTE)) {
+1479                     addRemoteInterfaces(list,interfaces[i]);
+1480                 }
+1481             }
+1482 
+1483             addRemoteInterfaces(list,theType.getSuperclass());
+1484         }
+1485     }
+1486 
+1487     /**
+1488      * Get a list of all the remote interfaces which this stub
+1489      * should declare.
+1490      */
+1491     RemoteType[] getDirectRemoteInterfaces (CompoundType theType) {
+1492 
+1493         RemoteType[] result;
+1494         InterfaceType[] interfaces = theType.getInterfaces();
+1495 
+1496         // First, get a list of all the interfaces...
+1497 
+1498         InterfaceType[] list;
+1499 
+1500         // Because we can be passed either an ImplementationType
+1501         // (which has interfaces) or a RemoteType (which is an
+1502         // interface and may have interfaces) we must handle each
+1503         // separately...
+1504 
+1505         // Do we have an implementation type?
+1506 
+1507         if (theType instanceof ImplementationType) {
+1508 
+1509             // Yes, so list is exactly what this type
+1510             // implements and is correct already.
+1511 
+1512             list = interfaces;
+1513 
+1514         } else {
+1515 
+1516             // No, so list is just theType...
+1517 
+1518             list = new InterfaceType[1];
+1519             list[0] = (InterfaceType) theType;
+1520         }
+1521 
+1522         // Ok, now count up the remote interfaces, allocate
+1523         // our result and fill it in...
+1524 
+1525         int remoteCount = countRemote(list,false);
+1526 
+1527         if (remoteCount == 0) {
+1528             throw new CompilerError("iiop.StubGenerator: No remote interfaces!");
+1529         }
+1530 
+1531         result = new RemoteType[remoteCount];
+1532         int offset = 0;
+1533         for (int i = 0; i &lt; list.length; i++) {
+1534             if (list[i].isType(TYPE_REMOTE)) {
+1535                 result[offset++] = (RemoteType)list[i];
+1536             }
+1537         }
+1538 
+1539         return result;
+1540     }
+1541 
+1542     int countRemote (Type[] list, boolean includeAbstract) {
+1543         int remoteCount = 0;
+1544         for (int i = 0; i &lt; list.length; i++) {
+1545             if (list[i].isType(TYPE_REMOTE) &amp;&amp;
+1546                 (includeAbstract || !list[i].isType(TYPE_ABSTRACT))) {
+1547                 remoteCount++;
+1548             }
+1549         }
+1550 
+1551         return remoteCount;
+1552     }
+1553 
+1554     void writeCastArray(IndentingWriter p) throws IOException {
+1555         if (castArray) {
+1556             p.pln();
+1557             p.pln("// This method is required as a work-around for");
+1558             p.pln("// a bug in the JDK 1.1.6 verifier.");
+1559             p.pln();
+1560             p.plnI("private "+getName(idJavaIoSerializable)+" cast_array(Object obj) {");
+1561             p.pln("return ("+getName(idJavaIoSerializable)+")obj;");
+1562             p.pOln("}");
+1563         }
+1564     }
+1565     void writeIds(IndentingWriter p, CompoundType theType, boolean isTie
+1566                   ) throws IOException {
+1567         p.plnI("private static final String[] _type_ids = {");
+1568 
+1569         String[] ids = getAllRemoteRepIDs(theType);
+1570 
+1571         if (ids.length &gt;0 ) {
+1572             for(int i = 0; i &lt; ids.length; i++) {
+1573                 if (i &gt; 0)
+1574                     p.pln(", ");
+1575                 p.p("\"" + ids[i] + "\"");
+1576             }
+1577         } else {
+1578            // Must be an implementation which only implements Remote...
+1579            p.pln("\"\"");
+1580         }
+1581         String qname = theType.getQualifiedName() ;
+1582         boolean isTransactional = isTie &amp;&amp; transactionalObjects.containsKey( qname ) ;
+1583         // Add TransactionalObject if needed.
+1584         if (isTransactional) {
+1585             // Have already written an id.
+1586             p.pln( ", " ) ;
+1587             p.pln( "\"IDL:omg.org/CosTransactions/TransactionalObject:1.0\"" ) ;
+1588         } else if (ids.length &gt; 0) {
+1589             p.pln();
+1590         }
+1591         p.pOln("};");
+1592     }
+1593 
+1594 
+1595     /**
+1596      * Write the Tie for the remote class to a stream.
+1597      */
+1598     protected void writeTie(OutputType outputType,
+1599                             IndentingWriter p) throws IOException
+1600     {
+1601         CompoundType theType = (CompoundType) outputType.getType();
+1602         RemoteType[] remoteInterfaces = null;
+1603 
+1604         // Write comment...
+1605         p.pln("// Tie class generated by rmic, do not edit.");
+1606         p.pln("// Contents subject to change without notice.");
+1607         p.pln();
+1608 
+1609         // Set our standard classes...
+1610         setStandardClassesInUse(theType,false);
+1611 
+1612         // Add classes for this type...
+1613         addClassesInUse(theType,remoteInterfaces);
+1614 
+1615         // Write package and import statements...
+1616         writePackageAndImports(p);
+1617 
+1618         // Declare the tie class.
+1619         p.p("public class " + currentClass + " extends " +
+1620             getName(tieBaseClass) + " implements Tie");
+1621 
+1622         // Add java.rmi.Remote if this type does not implement it.
+1623         // This allows stubs for Abstract interfaces to be treated
+1624         // uniformly...
+1625         if (!implementsRemote(theType)) {
+1626             p.pln(",");
+1627             p.p(getName("java.rmi.Remote"));
+1628         }
+1629 
+1630         p.plnI(" {");
+1631 
+1632         // Write data members...
+1633         p.pln();
+1634         p.pln("private " + getName(theType) + " target = null;");
+1635         p.pln();
+1636 
+1637         // Write the ids...
+1638         writeIds( p, theType, true ) ;
+1639 
+1640         // Write setTarget method...
+1641         p.pln();
+1642         p.plnI("public void setTarget(Remote target) {");
+1643         p.pln("this.target = (" + getName(theType) + ") target;");
+1644         p.pOln("}");
+1645 
+1646         // Write getTarget method...
+1647         p.pln();
+1648         p.plnI("public Remote getTarget() {");
+1649         p.pln("return target;");
+1650         p.pOln("}");
+1651 
+1652         // Write thisObject method...
+1653         p.pln();
+1654         write_tie_thisObject_method(p,idCorbaObject);
+1655 
+1656         // Write deactivate method...
+1657         p.pln();
+1658         write_tie_deactivate_method(p);
+1659 
+1660         // Write get orb method...
+1661         p.pln();
+1662         p.plnI("public ORB orb() {");
+1663         p.pln("return _orb();");
+1664         p.pOln("}");
+1665 
+1666         // Write set orb method...
+1667         p.pln();
+1668         write_tie_orb_method(p);
+1669 
+1670         // Write the _ids() method...
+1671         p.pln();
+1672         write_tie__ids_method(p);
+1673 
+1674         // Get all the methods...
+1675         CompoundType.Method[] remoteMethods = theType.getMethods();
+1676 
+1677         // Register all the argument names used, plus our
+1678         // data member names...
+1679 
+1680         addNamesInUse(remoteMethods);
+1681         addNameInUse("target");
+1682         addNameInUse("_type_ids");
+1683 
+1684         // Write the _invoke method...
+1685         p.pln();
+1686 
+1687         String in = getVariableName("in");
+1688         String _in = getVariableName("_in");
+1689         String ex = getVariableName("ex");
+1690         String method = getVariableName("method");
+1691         String reply = getVariableName("reply");
+1692 
+1693         p.plnI("public OutputStream  _invoke(String "+method+", InputStream "+_in+", " +
+1694                "ResponseHandler "+reply+") throws SystemException {");
+1695 
+1696         if (remoteMethods.length &gt; 0) {
+1697             p.plnI("try {");
+1698             p.plnI(idExtInputStream + " "+in+" = ");
+1699             p.pln("(" + idExtInputStream + ") "+_in+";");
+1700             p.pO();
+1701 
+1702             // See if we should use a hash table style
+1703             // comparison...
+1704 
+1705             StaticStringsHash hash = getStringsHash(remoteMethods);
+1706 
+1707             if (hash != null) {
+1708                 p.plnI("switch ("+method+"."+hash.method+") {");
+1709                 for (int i = 0; i &lt; hash.buckets.length; i++) {
+1710                     p.plnI("case "+hash.keys[i]+": ");
+1711                     for (int j = 0; j &lt; hash.buckets[i].length; j++) {
+1712                         CompoundType.Method current = remoteMethods[hash.buckets[i][j]];
+1713                         if (j &gt; 0) {
+1714                             p.pO("} else ");
+1715                         }
+1716                         p.plnI("if ("+method+".equals(\""+ current.getIDLName() +"\")) {");
+1717                         writeTieMethod(p, theType,current);
+1718                     }
+1719                     p.pOln("}");
+1720                     p.pO();
+1721                 }
+1722             } else {
+1723                 for(int i = 0; i &lt; remoteMethods.length; i++) {
+1724                 CompoundType.Method current = remoteMethods[i];
+1725                 if (i &gt; 0) {
+1726                     p.pO("} else ");
+1727                 }
+1728 
+1729                 p.plnI("if ("+method+".equals(\""+ current.getIDLName() +"\")) {");
+1730                 writeTieMethod(p, theType, current);
+1731             }
+1732             }
+1733 
+1734             if (hash != null) {
+1735                 p.pI();
+1736                 //        p.plnI("default:");
+1737             } else {
+1738                 //   p.pOlnI("} else {");
+1739             }
+1740             //              p.pln("throw new "+getName(idBadMethodException)+"();");
+1741 
+1742             if (hash != null) {
+1743                 p.pO();
+1744             }
+1745             p.pOln("}");
+1746             p.pln("throw new "+getName(idBadMethodException)+"();");
+1747 
+1748             p.pOlnI("} catch ("+getName(idSystemException)+" "+ex+") {");
+1749             p.pln("throw "+ex+";");
+1750 
+1751             p.pOlnI("} catch ("+getName(idJavaLangThrowable)+" "+ex+") {");
+1752             p.pln("throw new " + getName(idPortableUnknownException) + "("+ex+");");
+1753             p.pOln("}");
+1754         } else {
+1755             // No methods...
+1756 
+1757             p.pln("throw new " + getName(idBadMethodException) + "();");
+1758         }
+1759 
+1760         p.pOln("}");            // end invoke
+1761 
+1762         // Write the cast array hack...
+1763 
+1764         writeCastArray(p);
+1765 
+1766         // End tie class...
+1767         p.pOln("}");
+1768     }
+1769     public void catchWrongPolicy(IndentingWriter p) throws IOException {
+1770         p.pln("");
+1771     }
+1772     public void catchServantNotActive(IndentingWriter p) throws IOException {
+1773         p.pln("");
+1774     }
+1775     public void catchObjectNotActive(IndentingWriter p) throws IOException {
+1776         p.pln("");
+1777     }
+1778 
+1779     public void write_tie_thisObject_method(IndentingWriter p,
+1780                                             Identifier idCorbaObject)
+1781         throws IOException
+1782     {
+1783         if(POATie){
+1784             p.plnI("public " + idCorbaObject + " thisObject() {");
+1785             /*
+1786             p.pln("org.omg.CORBA.Object objref = null;");
+1787             p.pln("try{");
+1788             p.pln("objref = _poa().servant_to_reference(this);");
+1789             p.pln("}catch (org.omg.PortableServer.POAPackage.WrongPolicy exception){");
+1790             catchWrongPolicy(p);
+1791             p.pln("}catch (org.omg.PortableServer.POAPackage.ServantNotActive exception){");
+1792             catchServantNotActive(p);
+1793             p.pln("}");
+1794             p.pln("return objref;");
+1795             */
+1796             p.pln("return _this_object();");
+1797             p.pOln("}");
+1798         } else {
+1799             p.plnI("public " + idCorbaObject + " thisObject() {");
+1800             p.pln("return this;");
+1801             p.pOln("}");
+1802         }
+1803     }
+1804 
+1805     public void write_tie_deactivate_method(IndentingWriter p)
+1806         throws IOException
+1807     {
+1808         if(POATie){
+1809             p.plnI("public void deactivate() {");
+1810             p.pln("try{");
+1811             p.pln("_poa().deactivate_object(_poa().servant_to_id(this));");
+1812             p.pln("}catch (org.omg.PortableServer.POAPackage.WrongPolicy exception){");
+1813             catchWrongPolicy(p);
+1814             p.pln("}catch (org.omg.PortableServer.POAPackage.ObjectNotActive exception){");
+1815             catchObjectNotActive(p);
+1816             p.pln("}catch (org.omg.PortableServer.POAPackage.ServantNotActive exception){");
+1817             catchServantNotActive(p);
+1818             p.pln("}");
+1819             p.pOln("}");
+1820         } else {
+1821             p.plnI("public void deactivate() {");
+1822             p.pln("_orb().disconnect(this);");
+1823             p.pln("_set_delegate(null);");
+1824             p.pln("target = null;");
+1825             p.pOln("}");
+1826         }
+1827     }
+1828 
+1829     public void write_tie_orb_method(IndentingWriter p)
+1830         throws IOException
+1831     {
+1832         if(POATie){
+1833         p.plnI("public void orb(ORB orb) {");
+1834         /*
+1835         p.pln("try{");
+1836         p.pln("orb.connect(_poa().servant_to_reference(this));");
+1837         p.pln("}catch (org.omg.PortableServer.POAPackage.WrongPolicy exception){");
+1838         catchWrongPolicy(p);
+1839         p.pln("}catch (org.omg.PortableServer.POAPackage.ServantNotActive exception){");
+1840         catchServantNotActive(p);
+1841         p.pln("}");
+1842         */
+1843         p.pln("try {");
+1844         p.pln("    ((org.omg.CORBA_2_3.ORB)orb).set_delegate(this);");
+1845         p.pln("}");
+1846         p.pln("catch(ClassCastException e) {");
+1847         p.pln("    throw new org.omg.CORBA.BAD_PARAM");
+1848         p.pln("        (\"POA Servant requires an instance of org.omg.CORBA_2_3.ORB\");");
+1849         p.pln("}");
+1850         p.pOln("}");
+1851         } else {
+1852         p.plnI("public void orb(ORB orb) {");
+1853         p.pln("orb.connect(this);");
+1854         p.pOln("}");
+1855         }
+1856     }
+1857 
+1858     public void write_tie__ids_method(IndentingWriter p)
+1859         throws IOException
+1860     {
+1861         if(POATie){
+1862         p.plnI("public String[] _all_interfaces(org.omg.PortableServer.POA poa, byte[] objectId){");
+1863         p.pln("return (String[]) _type_ids.clone();");
+1864         p.pOln("}");
+1865         } else {
+1866         p.plnI("public String[] _ids() { ");
+1867         p.pln("return (String[]) _type_ids.clone();");
+1868         p.pOln("}");
+1869         }
+1870     }
+1871 
+1872 
+1873     StaticStringsHash getStringsHash (CompoundType.Method[] methods) {
+1874         if (useHash &amp;&amp; methods.length &gt; 1) {
+1875             String[] methodNames = new String[methods.length];
+1876             for (int i = 0; i &lt; methodNames.length; i++) {
+1877                 methodNames[i] = methods[i].getIDLName();
+1878             }
+1879             return new StaticStringsHash(methodNames);
+1880         }
+1881         return null;
+1882     }
+1883 
+1884     static boolean needNewReadStreamClass(Type type) {
+1885         if (type.isType(TYPE_ABSTRACT)) {
+1886             return true;
+1887         }
+1888         // Handle late-breaking special case for
+1889         // abstract IDL entities...
+1890         if ((type instanceof CompoundType) &amp;&amp;
+1891             ((CompoundType)type).isAbstractBase()) {
+1892             return true;
+1893         }
+1894         return needNewWriteStreamClass(type);
+1895     }
+1896 
+1897     static boolean needNewWriteStreamClass(Type type) {
+1898         switch (type.getTypeCode()) {
+1899         case TYPE_VOID:
+1900         case TYPE_BOOLEAN:
+1901         case TYPE_BYTE:
+1902         case TYPE_CHAR:
+1903         case TYPE_SHORT:
+1904         case TYPE_INT:
+1905         case TYPE_LONG:
+1906         case TYPE_FLOAT:
+1907         case TYPE_DOUBLE:           return false;
+1908 
+1909         case TYPE_STRING:           return true;
+1910         case TYPE_ANY:              return false;
+1911         case TYPE_CORBA_OBJECT:     return false;
+1912         case TYPE_REMOTE:           return false;
+1913         case TYPE_ABSTRACT:         return false;
+1914         case TYPE_NC_INTERFACE:     return true;
+1915         case TYPE_VALUE:            return true;
+1916         case TYPE_IMPLEMENTATION:   return true;
+1917         case TYPE_NC_CLASS:         return true;
+1918         case TYPE_ARRAY:            return true;
+1919         case TYPE_JAVA_RMI_REMOTE:  return false;
+1920 
+1921         default: throw new Error("unexpected type code: " + type.getTypeCode());
+1922         }
+1923     }
+1924 
+1925     /*
+1926      * Decide which arguments need to be copied and write
+1927      * the copy code. Returns an array of argument names to
+1928      * use to refer to either the copy or the original.
+1929      */
+1930     String[] writeCopyArguments(CompoundType.Method method,
+1931                                 IndentingWriter p) throws IOException {
+1932 
+1933         Type[] args = method.getArguments();
+1934         String[] origNames = method.getArgumentNames();
+1935 
+1936         // Copy the current parameter names to a result array...
+1937 
+1938         String[] result = new String[origNames.length];
+1939         for (int i = 0; i &lt; result.length; i++) {
+1940             result[i] = origNames[i];
+1941         }
+1942 
+1943         // Decide which arguments must be copied, if any. If
+1944         // any of the arguments are types for which a 'real' copy
+1945         // will be done, rather than just an autoConnect, set
+1946         // realCopy = true. Note that abstract types may only
+1947         // need autoConnect, but we cannot know that at compile
+1948         // time...
+1949 
+1950         boolean realCopy = false;
+1951         boolean[] copyArg = new boolean[args.length];
+1952         int copyCount = 0;
+1953         int firstCopiedArg = 0; // Only used in single copy case.  It is only the first arg that
+1954                                 // needs copying IF copyCount == 1.
+1955 
+1956         for (int i = 0; i &lt; args.length; i++) {
+1957             if (mustCopy(args[i])) {
+1958                 copyArg[i] = true;
+1959                 copyCount++;
+1960                 firstCopiedArg = i;
+1961                 if (args[i].getTypeCode() != TYPE_REMOTE &amp;&amp;
+1962                     args[i].getTypeCode() != TYPE_IMPLEMENTATION) {
+1963                     realCopy = true;
+1964                 }
+1965             } else {
+1966                 copyArg[i] = false;
+1967             }
+1968         }
+1969 
+1970         // Do we have any types which must be copied?
+1971         if (copyCount &gt; 0) {
+1972             // Yes. Are we only doing the copy to ensure
+1973             // that autoConnect occurs?
+1974             if (realCopy) {
+1975                 // Nope. We need to go back thru the list and
+1976                 // mark any strings so that they will be copied
+1977                 // to preserve any shared references...
+1978                 for (int i = 0; i &lt; args.length; i++) {
+1979                     if (args[i].getTypeCode() == TYPE_STRING) {
+1980                         copyArg[i] = true;
+1981                         copyCount++;
+1982                     }
+1983                 }
+1984             }
+1985 
+1986             // We're ready to generate code. Do we have more than
+1987             // one to copy?
+1988             if (copyCount &gt; 1) {
+1989                 // Generate a call to copyObjects...
+1990                 String arrayName = getVariableName("copies");
+1991                 p.p("Object[] " + arrayName + " = Util.copyObjects(new Object[]{");
+1992                 boolean first = true;
+1993                 for (int i = 0; i &lt; args.length; i++) {
+1994                     if (copyArg[i]) {
+1995                         if (!first) {
+1996                             p.p(",");
+1997                         }
+1998                         first = false;
+1999                         p.p(origNames[i]);
+2000                     }
+2001                 }
+2002                 p.pln("},_orb());");
+2003 
+2004                 // For each of the types which was copied, create
+2005                 // a local temporary for it, updating the result
+2006                 // array with the new local parameter name...
+2007                 int copyIndex = 0 ;
+2008                 for (int i = 0; i &lt; args.length; i++) {
+2009                     if (copyArg[i]) {
+2010                         result[i] = getVariableName(result[i]+"Copy");
+2011                         p.pln( getName(args[i]) + " " + result[i] + " = (" + getName(args[i]) + ") " +
+2012                                arrayName + "[" + copyIndex++ +"];");
+2013                     }
+2014                 }
+2015             } else {
+2016                 // Generate a call to copyObject, updating the result
+2017                 // with the new local parameter name...
+2018                 result[firstCopiedArg] = getVariableName(result[firstCopiedArg]+"Copy");
+2019                 p.pln( getName(args[firstCopiedArg]) + " " + result[firstCopiedArg] + " = (" +
+2020                        getName(args[firstCopiedArg]) + ") Util.copyObject(" +
+2021                        origNames[firstCopiedArg] + ",_orb());");
+2022             }
+2023         }
+2024 
+2025         return result;
+2026     }
+2027 
+2028     static final String SINGLE_SLASH = "\\";
+2029     static final String DOUBLE_SLASH = SINGLE_SLASH + SINGLE_SLASH;
+2030 
+2031     String getRepositoryID(Type type) {
+2032         return IDLNames.replace(type.getRepositoryID(), SINGLE_SLASH, DOUBLE_SLASH);
+2033     }
+2034 
+2035     String getExceptionRepositoryID(Type type) {
+2036         ClassType theType = (ClassType) type;
+2037         return IDLNames.getIDLRepositoryID(theType.getQualifiedIDLExceptionName(false));
+2038     }
+2039 
+2040     String getVariableName(String proposed) {
+2041         while (namesInUse.contains(proposed)) {
+2042             proposed = "$" + proposed;
+2043         }
+2044 
+2045         return proposed;
+2046     }
+2047 
+2048     void addNamesInUse(CompoundType.Method[] methods) {
+2049         for (int i = 0; i &lt; methods.length; i++) {
+2050             addNamesInUse(methods[i]);
+2051         }
+2052     }
+2053 
+2054     void addNamesInUse(CompoundType.Method method) {
+2055         String paramNames[] = method.getArgumentNames();
+2056         for (int i = 0; i &lt; paramNames.length; i++) {
+2057             addNameInUse(paramNames[i]);
+2058         }
+2059     }
+2060 
+2061     void addNameInUse(String name) {
+2062         namesInUse.add(name);
+2063     }
+2064 
+2065     static boolean mustCopy(Type type) {
+2066         switch (type.getTypeCode()) {
+2067         case TYPE_VOID:
+2068         case TYPE_BOOLEAN:
+2069         case TYPE_BYTE:
+2070         case TYPE_CHAR:
+2071         case TYPE_SHORT:
+2072         case TYPE_INT:
+2073         case TYPE_LONG:
+2074         case TYPE_FLOAT:
+2075         case TYPE_DOUBLE:
+2076         case TYPE_STRING:           return false;
+2077 
+2078         case TYPE_ANY:              return true;
+2079 
+2080         case TYPE_CORBA_OBJECT:     return false;
+2081 
+2082         case TYPE_REMOTE:
+2083         case TYPE_ABSTRACT:
+2084         case TYPE_NC_INTERFACE:
+2085         case TYPE_VALUE:
+2086         case TYPE_IMPLEMENTATION:
+2087         case TYPE_NC_CLASS:
+2088         case TYPE_ARRAY:
+2089         case TYPE_JAVA_RMI_REMOTE:  return true;
+2090 
+2091         default: throw new Error("unexpected type code: " + type.getTypeCode());
+2092         }
+2093     }
+2094 
+2095     ValueType[] getStubExceptions (CompoundType.Method method, boolean sort) {
+2096 
+2097         ValueType[] list = method.getFilteredStubExceptions(method.getExceptions());
+2098 
+2099         // Sort the list so that all org.omg.CORBA.UserException
+2100         // subtypes are at the beginning of the list.  This ensures
+2101         // that the stub will not call read_string() before calling
+2102         // XXHelper.read().
+2103 
+2104         if (sort) {
+2105             Arrays.sort(list,new UserExceptionComparator());
+2106             }
+2107 
+2108         return list;
+2109                 }
+2110 
+2111     ValueType[] getTieExceptions (CompoundType.Method method) {
+2112         return method.getUniqueCatchList(method.getImplExceptions());
+2113     }
+2114 
+2115     void writeTieMethod(IndentingWriter p, CompoundType type,
+2116                         CompoundType.Method method) throws IOException {
+2117         String methodName = method.getName();
+2118         Type paramTypes[] = method.getArguments();
+2119         String paramNames[] = method.getArgumentNames();
+2120         Type returnType = method.getReturnType();
+2121         ValueType[] exceptions = getTieExceptions(method);
+2122         String in = getVariableName("in");
+2123         String ex = getVariableName("ex");
+2124         String out = getVariableName("out");
+2125         String reply = getVariableName("reply");
+2126 
+2127         for (int i = 0; i &lt; paramTypes.length; i++) {
+2128             p.p(getName(paramTypes[i])+" "+paramNames[i]+" = ");
+2129             writeUnmarshalArgument(p, in, paramTypes[i], null);
+2130             p.pln();
+2131         }
+2132 
+2133         boolean handleExceptions = exceptions != null;
+2134         boolean doReturn = !returnType.isType(TYPE_VOID);
+2135 
+2136         if (handleExceptions &amp;&amp; doReturn) {
+2137             String objName = testUtil(getName(returnType), returnType);
+2138             p.pln(objName+" result;");
+2139         }
+2140 
+2141         if (handleExceptions)
+2142             p.plnI("try {");
+2143 
+2144         if (doReturn) {
+2145             if (handleExceptions) {
+2146                 p.p("result = ");
+2147             } else {
+2148                 p.p(getName(returnType)+" result = ");
+2149             }
+2150         }
+2151 
+2152         p.p("target."+methodName+"(");
+2153         for(int i = 0; i &lt; paramNames.length; i++) {
+2154             if (i &gt; 0)
+2155                 p.p(", ");
+2156             p.p(paramNames[i]);
+2157         }
+2158         p.pln(");");
+2159 
+2160         if (handleExceptions) {
+2161             for(int i = 0; i &lt; exceptions.length; i++) {
+2162                 p.pOlnI("} catch ("+getName(exceptions[i])+" "+ex+") {");
+2163 
+2164                 // Is this our IDLEntity Exception special case?
+2165 
+2166                 if (exceptions[i].isIDLEntityException() &amp;&amp; !exceptions[i].isCORBAUserException()) {
+2167 
+2168                                 // Yes...
+2169 
+2170                     String helperName = IDLNames.replace(exceptions[i].getQualifiedIDLName(false),"::",".");
+2171                     helperName += "Helper";
+2172                     p.pln(idOutputStream+" "+out +" = "+reply+".createExceptionReply();");
+2173                     p.pln(helperName+".write("+out+","+ex+");");
+2174 
+2175                 } else {
+2176 
+2177                                 // No...
+2178 
+2179                     p.pln("String id = \"" + getExceptionRepositoryID(exceptions[i]) + "\";");
+2180                 p.plnI(idExtOutputStream + " "+out+" = ");
+2181                 p.pln("(" + idExtOutputStream + ") "+reply+".createExceptionReply();");
+2182                 p.pOln(out+".write_string(id);");
+2183                     p.pln(out+".write_value("+ex+"," + getName(exceptions[i]) + ".class);");
+2184                 }
+2185 
+2186                 p.pln("return "+out+";");
+2187             }
+2188             p.pOln("}");
+2189         }
+2190 
+2191         if (needNewWriteStreamClass(returnType)) {
+2192             p.plnI(idExtOutputStream + " "+out+" = ");
+2193             p.pln("(" + idExtOutputStream + ") "+reply+".createReply();");
+2194             p.pO();
+2195         } else {
+2196             p.pln("OutputStream "+out+" = "+reply+".createReply();");
+2197         }
+2198 
+2199         if (doReturn) {
+2200             writeMarshalArgument(p, out, returnType, "result");
+2201             p.pln();
+2202         }
+2203 
+2204         p.pln("return "+out+";");
+2205     }
+2206 
+2207 
+2208     /**
+2209      * Write Java statements to marshal a series of values in order as
+2210      * named in the "names" array, with types as specified in the "types"
+2211      * array", to the java.io.ObjectOutput stream named "stream".
+2212      */
+2213     void writeMarshalArguments(IndentingWriter p,
+2214                                String streamName,
+2215                                Type[] types, String[] names)
+2216         throws IOException
+2217     {
+2218         if (types.length != names.length) {
+2219             throw new Error("paramter type and name arrays different sizes");
+2220         }
+2221 
+2222         for (int i = 0; i &lt; types.length; i++) {
+2223             writeMarshalArgument(p, streamName, types[i], names[i]);
+2224             if (i != types.length -1) {
+2225                 p.pln();
+2226             }
+2227         }
+2228     }
+2229 
+2230     /**
+2231      * Added for IASRI 4987274. Remote classes named "Util" were
+2232      * getting confused with javax.rmi.CORBA.Util and the
+2233      * unqualifiedName "Util".
+2234      */
+2235     String testUtil(String objectName, Type ttype) {
+2236         if (objectName.equals("Util")) {
+2237                 String correctedName = (String)ttype.getPackageName() + "." + objectName;
+2238                 return correctedName;
+2239         } else {
+2240                 return objectName;
+2241         }
+2242     }
+2243 }
+2244 
+2245 class StringComparator implements java.util.Comparator {
+2246     public int compare(Object o1, Object o2) {
+2247         String s1 = (String)o1;
+2248         String s2 = (String)o2;
+2249         return s1.compareTo(s2);
+2250     }
+2251 }
+2252 
+2253 
+2254 class UserExceptionComparator implements java.util.Comparator {
+2255     public int compare(Object o1, Object o2) {
+2256         ValueType v1 = (ValueType)o1;
+2257         ValueType v2 = (ValueType)o2;
+2258         int result = 0;
+2259         if (isUserException(v1)) {
+2260             if (!isUserException(v2)) {
+2261                 result = -1;
+2262             }
+2263         } else if (isUserException(v2)) {
+2264             if (!isUserException(v1)) {
+2265                 result = 1;
+2266             }
+2267         }
+2268         return result;
+2269     }
+2270 
+2271     final boolean isUserException(ValueType it) {
+2272         return it.isIDLEntityException() &amp;&amp; !it.isCORBAUserException();
+2273     }
+2274 }
+</pre></body></html>

@@ -1,0 +1,486 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>corba Sdiff src/share/classes/sun/rmi/rmic/iiop </title>
+</head><body id="SUNWwebrev">
+<h2>src/share/classes/sun/rmi/rmic/iiop/StubGenerator.java</h2>
+<a class="print" href="javascript:print()">Print this page</a>
+<pre></pre>
+
+<table><tr valign="top">
+<td><pre>
+
+</pre><hr></hr><pre>
+1614 
+1615         // Write package and import statements...
+1616         writePackageAndImports(p);
+1617 
+1618         // Declare the tie class.
+1619         p.p("public class " + currentClass + " extends " +
+1620             getName(tieBaseClass) + " implements Tie");
+1621 
+1622         // Add java.rmi.Remote if this type does not implement it.
+1623         // This allows stubs for Abstract interfaces to be treated
+1624         // uniformly...
+1625         if (!implementsRemote(theType)) {
+1626             p.pln(",");
+1627             p.p(getName("java.rmi.Remote"));
+1628         }
+1629 
+1630         p.plnI(" {");
+1631 
+1632         // Write data members...
+1633         p.pln();
+<span class="changed">1634         p.pln("private " + getName(theType) + " target = null;");</span>
+1635         p.pln();
+1636 
+1637         // Write the ids...
+1638         writeIds( p, theType, true ) ;
+1639 
+1640         // Write setTarget method...
+1641         p.pln();
+1642         p.plnI("public void setTarget(Remote target) {");
+1643         p.pln("this.target = (" + getName(theType) + ") target;");
+1644         p.pOln("}");
+1645 
+1646         // Write getTarget method...
+1647         p.pln();
+1648         p.plnI("public Remote getTarget() {");
+1649         p.pln("return target;");
+1650         p.pOln("}");
+1651 
+1652         // Write thisObject method...
+1653         p.pln();
+1654         write_tie_thisObject_method(p,idCorbaObject);
+
+</pre><hr></hr><pre>
+1662         p.plnI("public ORB orb() {");
+1663         p.pln("return _orb();");
+1664         p.pOln("}");
+1665 
+1666         // Write set orb method...
+1667         p.pln();
+1668         write_tie_orb_method(p);
+1669 
+1670         // Write the _ids() method...
+1671         p.pln();
+1672         write_tie__ids_method(p);
+1673 
+1674         // Get all the methods...
+1675         CompoundType.Method[] remoteMethods = theType.getMethods();
+1676 
+1677         // Register all the argument names used, plus our
+1678         // data member names...
+1679 
+1680         addNamesInUse(remoteMethods);
+1681         addNameInUse("target");
+
+1682         addNameInUse("_type_ids");
+1683 
+1684         // Write the _invoke method...
+1685         p.pln();
+1686 
+1687         String in = getVariableName("in");
+1688         String _in = getVariableName("_in");
+1689         String ex = getVariableName("ex");
+1690         String method = getVariableName("method");
+1691         String reply = getVariableName("reply");
+1692 
+1693         p.plnI("public OutputStream  _invoke(String "+method+", InputStream "+_in+", " +
+1694                "ResponseHandler "+reply+") throws SystemException {");
+1695 
+1696         if (remoteMethods.length &gt; 0) {
+1697             p.plnI("try {");
+
+
+
+
+
+1698             p.plnI(idExtInputStream + " "+in+" = ");
+1699             p.pln("(" + idExtInputStream + ") "+_in+";");
+1700             p.pO();
+1701 
+1702             // See if we should use a hash table style
+1703             // comparison...
+1704 
+1705             StaticStringsHash hash = getStringsHash(remoteMethods);
+1706 
+1707             if (hash != null) {
+1708                 p.plnI("switch ("+method+"."+hash.method+") {");
+1709                 for (int i = 0; i &lt; hash.buckets.length; i++) {
+1710                     p.plnI("case "+hash.keys[i]+": ");
+1711                     for (int j = 0; j &lt; hash.buckets[i].length; j++) {
+1712                         CompoundType.Method current = remoteMethods[hash.buckets[i][j]];
+1713                         if (j &gt; 0) {
+1714                             p.pO("} else ");
+1715                         }
+1716                         p.plnI("if ("+method+".equals(\""+ current.getIDLName() +"\")) {");
+1717                         writeTieMethod(p, theType,current);
+
+</pre><hr></hr><pre>
+1804 
+1805     public void write_tie_deactivate_method(IndentingWriter p)
+1806         throws IOException
+1807     {
+1808         if(POATie){
+1809             p.plnI("public void deactivate() {");
+1810             p.pln("try{");
+1811             p.pln("_poa().deactivate_object(_poa().servant_to_id(this));");
+1812             p.pln("}catch (org.omg.PortableServer.POAPackage.WrongPolicy exception){");
+1813             catchWrongPolicy(p);
+1814             p.pln("}catch (org.omg.PortableServer.POAPackage.ObjectNotActive exception){");
+1815             catchObjectNotActive(p);
+1816             p.pln("}catch (org.omg.PortableServer.POAPackage.ServantNotActive exception){");
+1817             catchServantNotActive(p);
+1818             p.pln("}");
+1819             p.pOln("}");
+1820         } else {
+1821             p.plnI("public void deactivate() {");
+1822             p.pln("_orb().disconnect(this);");
+1823             p.pln("_set_delegate(null);");
+
+1824             p.pln("target = null;");
+1825             p.pOln("}");
+
+1826         }
+1827     }
+1828 
+1829     public void write_tie_orb_method(IndentingWriter p)
+1830         throws IOException
+1831     {
+1832         if(POATie){
+1833         p.plnI("public void orb(ORB orb) {");
+1834         /*
+1835         p.pln("try{");
+1836         p.pln("orb.connect(_poa().servant_to_reference(this));");
+1837         p.pln("}catch (org.omg.PortableServer.POAPackage.WrongPolicy exception){");
+1838         catchWrongPolicy(p);
+1839         p.pln("}catch (org.omg.PortableServer.POAPackage.ServantNotActive exception){");
+1840         catchServantNotActive(p);
+1841         p.pln("}");
+1842         */
+1843         p.pln("try {");
+1844         p.pln("    ((org.omg.CORBA_2_3.ORB)orb).set_delegate(this);");
+1845         p.pln("}");
+
+</pre><hr></hr><pre>
+2132 
+2133         boolean handleExceptions = exceptions != null;
+2134         boolean doReturn = !returnType.isType(TYPE_VOID);
+2135 
+2136         if (handleExceptions &amp;&amp; doReturn) {
+2137             String objName = testUtil(getName(returnType), returnType);
+2138             p.pln(objName+" result;");
+2139         }
+2140 
+2141         if (handleExceptions)
+2142             p.plnI("try {");
+2143 
+2144         if (doReturn) {
+2145             if (handleExceptions) {
+2146                 p.p("result = ");
+2147             } else {
+2148                 p.p(getName(returnType)+" result = ");
+2149             }
+2150         }
+2151 
+<span class="changed">2152         p.p("target."+methodName+"(");</span>
+2153         for(int i = 0; i &lt; paramNames.length; i++) {
+2154             if (i &gt; 0)
+2155                 p.p(", ");
+2156             p.p(paramNames[i]);
+2157         }
+2158         p.pln(");");
+2159 
+2160         if (handleExceptions) {
+2161             for(int i = 0; i &lt; exceptions.length; i++) {
+2162                 p.pOlnI("} catch ("+getName(exceptions[i])+" "+ex+") {");
+2163 
+2164                 // Is this our IDLEntity Exception special case?
+2165 
+2166                 if (exceptions[i].isIDLEntityException() &amp;&amp; !exceptions[i].isCORBAUserException()) {
+2167 
+2168                                 // Yes...
+2169 
+2170                     String helperName = IDLNames.replace(exceptions[i].getQualifiedIDLName(false),"::",".");
+2171                     helperName += "Helper";
+2172                     p.pln(idOutputStream+" "+out +" = "+reply+".createExceptionReply();");
+
+</pre><hr></hr>
+</pre></td><td><pre>
+
+</pre><hr></hr><pre>
+1614 
+1615         // Write package and import statements...
+1616         writePackageAndImports(p);
+1617 
+1618         // Declare the tie class.
+1619         p.p("public class " + currentClass + " extends " +
+1620             getName(tieBaseClass) + " implements Tie");
+1621 
+1622         // Add java.rmi.Remote if this type does not implement it.
+1623         // This allows stubs for Abstract interfaces to be treated
+1624         // uniformly...
+1625         if (!implementsRemote(theType)) {
+1626             p.pln(",");
+1627             p.p(getName("java.rmi.Remote"));
+1628         }
+1629 
+1630         p.plnI(" {");
+1631 
+1632         // Write data members...
+1633         p.pln();
+<span class="changed">1634         p.pln("volatile private " + getName(theType) + " target = null;");</span>
+1635         p.pln();
+1636 
+1637         // Write the ids...
+1638         writeIds( p, theType, true ) ;
+1639 
+1640         // Write setTarget method...
+1641         p.pln();
+1642         p.plnI("public void setTarget(Remote target) {");
+1643         p.pln("this.target = (" + getName(theType) + ") target;");
+1644         p.pOln("}");
+1645 
+1646         // Write getTarget method...
+1647         p.pln();
+1648         p.plnI("public Remote getTarget() {");
+1649         p.pln("return target;");
+1650         p.pOln("}");
+1651 
+1652         // Write thisObject method...
+1653         p.pln();
+1654         write_tie_thisObject_method(p,idCorbaObject);
+
+</pre><hr></hr><pre>
+1662         p.plnI("public ORB orb() {");
+1663         p.pln("return _orb();");
+1664         p.pOln("}");
+1665 
+1666         // Write set orb method...
+1667         p.pln();
+1668         write_tie_orb_method(p);
+1669 
+1670         // Write the _ids() method...
+1671         p.pln();
+1672         write_tie__ids_method(p);
+1673 
+1674         // Get all the methods...
+1675         CompoundType.Method[] remoteMethods = theType.getMethods();
+1676 
+1677         // Register all the argument names used, plus our
+1678         // data member names...
+1679 
+1680         addNamesInUse(remoteMethods);
+1681         addNameInUse("target");
+<span class="new">1682         addNameInUse("sTarget");</span>
+1683         addNameInUse("_type_ids");
+1684 
+1685         // Write the _invoke method...
+1686         p.pln();
+1687 
+1688         String in = getVariableName("in");
+1689         String _in = getVariableName("_in");
+1690         String ex = getVariableName("ex");
+1691         String method = getVariableName("method");
+1692         String reply = getVariableName("reply");
+1693 
+1694         p.plnI("public OutputStream  _invoke(String "+method+", InputStream "+_in+", " +
+1695                "ResponseHandler "+reply+") throws SystemException {");
+1696 
+1697         if (remoteMethods.length &gt; 0) {
+1698             p.plnI("try {");
+<span class="new">1699             p.pln(getName(theType) + " sTarget;");</span>
+<span class="new">1700             p.pln("sTarget = target;");</span>
+<span class="new">1701             p.plnI("if (sTarget == null) {");</span>
+<span class="new">1702             p.pln("throw new java.io.IOException();");</span>
+<span class="new">1703             p.pOln("}");</span>
+1704             p.plnI(idExtInputStream + " "+in+" = ");
+1705             p.pln("(" + idExtInputStream + ") "+_in+";");
+1706             p.pO();
+1707 
+1708             // See if we should use a hash table style
+1709             // comparison...
+1710 
+1711             StaticStringsHash hash = getStringsHash(remoteMethods);
+1712 
+1713             if (hash != null) {
+1714                 p.plnI("switch ("+method+"."+hash.method+") {");
+1715                 for (int i = 0; i &lt; hash.buckets.length; i++) {
+1716                     p.plnI("case "+hash.keys[i]+": ");
+1717                     for (int j = 0; j &lt; hash.buckets[i].length; j++) {
+1718                         CompoundType.Method current = remoteMethods[hash.buckets[i][j]];
+1719                         if (j &gt; 0) {
+1720                             p.pO("} else ");
+1721                         }
+1722                         p.plnI("if ("+method+".equals(\""+ current.getIDLName() +"\")) {");
+1723                         writeTieMethod(p, theType,current);
+
+</pre><hr></hr><pre>
+1810 
+1811     public void write_tie_deactivate_method(IndentingWriter p)
+1812         throws IOException
+1813     {
+1814         if(POATie){
+1815             p.plnI("public void deactivate() {");
+1816             p.pln("try{");
+1817             p.pln("_poa().deactivate_object(_poa().servant_to_id(this));");
+1818             p.pln("}catch (org.omg.PortableServer.POAPackage.WrongPolicy exception){");
+1819             catchWrongPolicy(p);
+1820             p.pln("}catch (org.omg.PortableServer.POAPackage.ObjectNotActive exception){");
+1821             catchObjectNotActive(p);
+1822             p.pln("}catch (org.omg.PortableServer.POAPackage.ServantNotActive exception){");
+1823             catchServantNotActive(p);
+1824             p.pln("}");
+1825             p.pOln("}");
+1826         } else {
+1827             p.plnI("public void deactivate() {");
+1828             p.pln("_orb().disconnect(this);");
+1829             p.pln("_set_delegate(null);");
+<span class="new">1830             p.plnI("synchronized(this) {");</span>
+1831             p.pln("target = null;");
+1832             p.pOln("}");
+<span class="new">1833             p.pOln("}");</span>
+1834         }
+1835     }
+1836 
+1837     public void write_tie_orb_method(IndentingWriter p)
+1838         throws IOException
+1839     {
+1840         if(POATie){
+1841         p.plnI("public void orb(ORB orb) {");
+1842         /*
+1843         p.pln("try{");
+1844         p.pln("orb.connect(_poa().servant_to_reference(this));");
+1845         p.pln("}catch (org.omg.PortableServer.POAPackage.WrongPolicy exception){");
+1846         catchWrongPolicy(p);
+1847         p.pln("}catch (org.omg.PortableServer.POAPackage.ServantNotActive exception){");
+1848         catchServantNotActive(p);
+1849         p.pln("}");
+1850         */
+1851         p.pln("try {");
+1852         p.pln("    ((org.omg.CORBA_2_3.ORB)orb).set_delegate(this);");
+1853         p.pln("}");
+
+</pre><hr></hr><pre>
+2140 
+2141         boolean handleExceptions = exceptions != null;
+2142         boolean doReturn = !returnType.isType(TYPE_VOID);
+2143 
+2144         if (handleExceptions &amp;&amp; doReturn) {
+2145             String objName = testUtil(getName(returnType), returnType);
+2146             p.pln(objName+" result;");
+2147         }
+2148 
+2149         if (handleExceptions)
+2150             p.plnI("try {");
+2151 
+2152         if (doReturn) {
+2153             if (handleExceptions) {
+2154                 p.p("result = ");
+2155             } else {
+2156                 p.p(getName(returnType)+" result = ");
+2157             }
+2158         }
+2159 
+<span class="changed">2160         p.p("sTarget."+methodName+"(");</span>
+2161         for(int i = 0; i &lt; paramNames.length; i++) {
+2162             if (i &gt; 0)
+2163                 p.p(", ");
+2164             p.p(paramNames[i]);
+2165         }
+2166         p.pln(");");
+2167 
+2168         if (handleExceptions) {
+2169             for(int i = 0; i &lt; exceptions.length; i++) {
+2170                 p.pOlnI("} catch ("+getName(exceptions[i])+" "+ex+") {");
+2171 
+2172                 // Is this our IDLEntity Exception special case?
+2173 
+2174                 if (exceptions[i].isIDLEntityException() &amp;&amp; !exceptions[i].isCORBAUserException()) {
+2175 
+2176                                 // Yes...
+2177 
+2178                     String helperName = IDLNames.replace(exceptions[i].getQualifiedIDLName(false),"::",".");
+2179                     helperName += "Helper";
+2180                     p.pln(idOutputStream+" "+out +" = "+reply+".createExceptionReply();");
+
+</pre><hr></hr>
+</pre></td>
+</tr></table>
+</body></html>
