@@ -1,5 +1,5 @@
---- old/src/share/classes/sun/rmi/rmic/iiop/StubGenerator.java	2012-10-04 16:04:22.263328553 +0200
-+++ new/src/share/classes/sun/rmi/rmic/iiop/StubGenerator.java	2012-10-04 16:04:22.183328549 +0200
+--- old/src/share/classes/sun/rmi/rmic/iiop/StubGenerator.java	2012-10-05 09:16:59.242155625 +0200
++++ new/src/share/classes/sun/rmi/rmic/iiop/StubGenerator.java	2012-10-05 09:16:59.158155626 +0200
 @@ -1631,7 +1631,7 @@
  
          // Write data members...
@@ -9,43 +9,14 @@
          p.pln();
  
          // Write the ids...
-@@ -1679,6 +1679,7 @@
- 
-         addNamesInUse(remoteMethods);
-         addNameInUse("target");
-+        addNameInUse("sTarget");
-         addNameInUse("_type_ids");
- 
-         // Write the _invoke method...
-@@ -1695,6 +1696,11 @@
+@@ -1695,6 +1695,10 @@
  
          if (remoteMethods.length > 0) {
              p.plnI("try {");
-+            p.pln(getName(theType) + " sTarget;");
-+            p.pln("sTarget = target;");
-+            p.plnI("if (sTarget == null) {");
++            p.pln(getName(theType) + " target = this.target;");
++            p.plnI("if (target == null) {");
 +            p.pln("throw new java.io.IOException();");
 +            p.pOln("}");
              p.plnI(idExtInputStream + " "+in+" = ");
              p.pln("(" + idExtInputStream + ") "+_in+";");
              p.pO();
-@@ -1821,8 +1827,10 @@
-             p.plnI("public void deactivate() {");
-             p.pln("_orb().disconnect(this);");
-             p.pln("_set_delegate(null);");
-+            p.plnI("synchronized(this) {");
-             p.pln("target = null;");
-             p.pOln("}");
-+            p.pOln("}");
-         }
-     }
- 
-@@ -2149,7 +2157,7 @@
-             }
-         }
- 
--        p.p("target."+methodName+"(");
-+        p.p("sTarget."+methodName+"(");
-         for(int i = 0; i < paramNames.length; i++) {
-             if (i > 0)
-                 p.p(", ");

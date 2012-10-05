@@ -1760,605 +1760,601 @@ hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
 1679 
 1680         addNamesInUse(remoteMethods);
 1681         addNameInUse("target");
-1682         addNameInUse("sTarget");
-1683         addNameInUse("_type_ids");
-1684 
-1685         // Write the _invoke method...
-1686         p.pln();
-1687 
-1688         String in = getVariableName("in");
-1689         String _in = getVariableName("_in");
-1690         String ex = getVariableName("ex");
-1691         String method = getVariableName("method");
-1692         String reply = getVariableName("reply");
-1693 
-1694         p.plnI("public OutputStream  _invoke(String "+method+", InputStream "+_in+", " +
-1695                "ResponseHandler "+reply+") throws SystemException {");
-1696 
-1697         if (remoteMethods.length &gt; 0) {
-1698             p.plnI("try {");
-1699             p.pln(getName(theType) + " sTarget;");
-1700             p.pln("sTarget = target;");
-1701             p.plnI("if (sTarget == null) {");
-1702             p.pln("throw new java.io.IOException();");
-1703             p.pOln("}");
-1704             p.plnI(idExtInputStream + " "+in+" = ");
-1705             p.pln("(" + idExtInputStream + ") "+_in+";");
-1706             p.pO();
-1707 
-1708             // See if we should use a hash table style
-1709             // comparison...
+1682         addNameInUse("_type_ids");
+1683 
+1684         // Write the _invoke method...
+1685         p.pln();
+1686 
+1687         String in = getVariableName("in");
+1688         String _in = getVariableName("_in");
+1689         String ex = getVariableName("ex");
+1690         String method = getVariableName("method");
+1691         String reply = getVariableName("reply");
+1692 
+1693         p.plnI("public OutputStream  _invoke(String "+method+", InputStream "+_in+", " +
+1694                "ResponseHandler "+reply+") throws SystemException {");
+1695 
+1696         if (remoteMethods.length &gt; 0) {
+1697             p.plnI("try {");
+1698             p.pln(getName(theType) + " target = this.target;");
+1699             p.plnI("if (target == null) {");
+1700             p.pln("throw new java.io.IOException();");
+1701             p.pOln("}");
+1702             p.plnI(idExtInputStream + " "+in+" = ");
+1703             p.pln("(" + idExtInputStream + ") "+_in+";");
+1704             p.pO();
+1705 
+1706             // See if we should use a hash table style
+1707             // comparison...
+1708 
+1709             StaticStringsHash hash = getStringsHash(remoteMethods);
 1710 
-1711             StaticStringsHash hash = getStringsHash(remoteMethods);
-1712 
-1713             if (hash != null) {
-1714                 p.plnI("switch ("+method+"."+hash.method+") {");
-1715                 for (int i = 0; i &lt; hash.buckets.length; i++) {
-1716                     p.plnI("case "+hash.keys[i]+": ");
-1717                     for (int j = 0; j &lt; hash.buckets[i].length; j++) {
-1718                         CompoundType.Method current = remoteMethods[hash.buckets[i][j]];
-1719                         if (j &gt; 0) {
-1720                             p.pO("} else ");
-1721                         }
-1722                         p.plnI("if ("+method+".equals(\""+ current.getIDLName() +"\")) {");
-1723                         writeTieMethod(p, theType,current);
-1724                     }
-1725                     p.pOln("}");
-1726                     p.pO();
-1727                 }
-1728             } else {
-1729                 for(int i = 0; i &lt; remoteMethods.length; i++) {
-1730                 CompoundType.Method current = remoteMethods[i];
-1731                 if (i &gt; 0) {
-1732                     p.pO("} else ");
-1733                 }
-1734 
-1735                 p.plnI("if ("+method+".equals(\""+ current.getIDLName() +"\")) {");
-1736                 writeTieMethod(p, theType, current);
-1737             }
-1738             }
-1739 
-1740             if (hash != null) {
-1741                 p.pI();
-1742                 //        p.plnI("default:");
-1743             } else {
-1744                 //   p.pOlnI("} else {");
-1745             }
-1746             //              p.pln("throw new "+getName(idBadMethodException)+"();");
-1747 
-1748             if (hash != null) {
-1749                 p.pO();
-1750             }
-1751             p.pOln("}");
-1752             p.pln("throw new "+getName(idBadMethodException)+"();");
-1753 
-1754             p.pOlnI("} catch ("+getName(idSystemException)+" "+ex+") {");
-1755             p.pln("throw "+ex+";");
-1756 
-1757             p.pOlnI("} catch ("+getName(idJavaLangThrowable)+" "+ex+") {");
-1758             p.pln("throw new " + getName(idPortableUnknownException) + "("+ex+");");
-1759             p.pOln("}");
-1760         } else {
-1761             // No methods...
-1762 
-1763             p.pln("throw new " + getName(idBadMethodException) + "();");
-1764         }
+1711             if (hash != null) {
+1712                 p.plnI("switch ("+method+"."+hash.method+") {");
+1713                 for (int i = 0; i &lt; hash.buckets.length; i++) {
+1714                     p.plnI("case "+hash.keys[i]+": ");
+1715                     for (int j = 0; j &lt; hash.buckets[i].length; j++) {
+1716                         CompoundType.Method current = remoteMethods[hash.buckets[i][j]];
+1717                         if (j &gt; 0) {
+1718                             p.pO("} else ");
+1719                         }
+1720                         p.plnI("if ("+method+".equals(\""+ current.getIDLName() +"\")) {");
+1721                         writeTieMethod(p, theType,current);
+1722                     }
+1723                     p.pOln("}");
+1724                     p.pO();
+1725                 }
+1726             } else {
+1727                 for(int i = 0; i &lt; remoteMethods.length; i++) {
+1728                 CompoundType.Method current = remoteMethods[i];
+1729                 if (i &gt; 0) {
+1730                     p.pO("} else ");
+1731                 }
+1732 
+1733                 p.plnI("if ("+method+".equals(\""+ current.getIDLName() +"\")) {");
+1734                 writeTieMethod(p, theType, current);
+1735             }
+1736             }
+1737 
+1738             if (hash != null) {
+1739                 p.pI();
+1740                 //        p.plnI("default:");
+1741             } else {
+1742                 //   p.pOlnI("} else {");
+1743             }
+1744             //              p.pln("throw new "+getName(idBadMethodException)+"();");
+1745 
+1746             if (hash != null) {
+1747                 p.pO();
+1748             }
+1749             p.pOln("}");
+1750             p.pln("throw new "+getName(idBadMethodException)+"();");
+1751 
+1752             p.pOlnI("} catch ("+getName(idSystemException)+" "+ex+") {");
+1753             p.pln("throw "+ex+";");
+1754 
+1755             p.pOlnI("} catch ("+getName(idJavaLangThrowable)+" "+ex+") {");
+1756             p.pln("throw new " + getName(idPortableUnknownException) + "("+ex+");");
+1757             p.pOln("}");
+1758         } else {
+1759             // No methods...
+1760 
+1761             p.pln("throw new " + getName(idBadMethodException) + "();");
+1762         }
+1763 
+1764         p.pOln("}");            // end invoke
 1765 
-1766         p.pOln("}");            // end invoke
+1766         // Write the cast array hack...
 1767 
-1768         // Write the cast array hack...
+1768         writeCastArray(p);
 1769 
-1770         writeCastArray(p);
-1771 
-1772         // End tie class...
-1773         p.pOln("}");
-1774     }
-1775     public void catchWrongPolicy(IndentingWriter p) throws IOException {
-1776         p.pln("");
-1777     }
-1778     public void catchServantNotActive(IndentingWriter p) throws IOException {
-1779         p.pln("");
-1780     }
-1781     public void catchObjectNotActive(IndentingWriter p) throws IOException {
-1782         p.pln("");
-1783     }
-1784 
-1785     public void write_tie_thisObject_method(IndentingWriter p,
-1786                                             Identifier idCorbaObject)
-1787         throws IOException
-1788     {
-1789         if(POATie){
-1790             p.plnI("public " + idCorbaObject + " thisObject() {");
-1791             /*
-1792             p.pln("org.omg.CORBA.Object objref = null;");
-1793             p.pln("try{");
-1794             p.pln("objref = _poa().servant_to_reference(this);");
-1795             p.pln("}catch (org.omg.PortableServer.POAPackage.WrongPolicy exception){");
-1796             catchWrongPolicy(p);
-1797             p.pln("}catch (org.omg.PortableServer.POAPackage.ServantNotActive exception){");
-1798             catchServantNotActive(p);
-1799             p.pln("}");
-1800             p.pln("return objref;");
-1801             */
-1802             p.pln("return _this_object();");
-1803             p.pOln("}");
-1804         } else {
-1805             p.plnI("public " + idCorbaObject + " thisObject() {");
-1806             p.pln("return this;");
-1807             p.pOln("}");
-1808         }
-1809     }
-1810 
-1811     public void write_tie_deactivate_method(IndentingWriter p)
-1812         throws IOException
-1813     {
-1814         if(POATie){
-1815             p.plnI("public void deactivate() {");
-1816             p.pln("try{");
-1817             p.pln("_poa().deactivate_object(_poa().servant_to_id(this));");
-1818             p.pln("}catch (org.omg.PortableServer.POAPackage.WrongPolicy exception){");
-1819             catchWrongPolicy(p);
-1820             p.pln("}catch (org.omg.PortableServer.POAPackage.ObjectNotActive exception){");
-1821             catchObjectNotActive(p);
-1822             p.pln("}catch (org.omg.PortableServer.POAPackage.ServantNotActive exception){");
-1823             catchServantNotActive(p);
-1824             p.pln("}");
-1825             p.pOln("}");
-1826         } else {
-1827             p.plnI("public void deactivate() {");
-1828             p.pln("_orb().disconnect(this);");
-1829             p.pln("_set_delegate(null);");
-1830             p.plnI("synchronized(this) {");
-1831             p.pln("target = null;");
-1832             p.pOln("}");
-1833             p.pOln("}");
-1834         }
-1835     }
-1836 
-1837     public void write_tie_orb_method(IndentingWriter p)
-1838         throws IOException
-1839     {
-1840         if(POATie){
-1841         p.plnI("public void orb(ORB orb) {");
-1842         /*
-1843         p.pln("try{");
-1844         p.pln("orb.connect(_poa().servant_to_reference(this));");
-1845         p.pln("}catch (org.omg.PortableServer.POAPackage.WrongPolicy exception){");
-1846         catchWrongPolicy(p);
-1847         p.pln("}catch (org.omg.PortableServer.POAPackage.ServantNotActive exception){");
-1848         catchServantNotActive(p);
+1770         // End tie class...
+1771         p.pOln("}");
+1772     }
+1773     public void catchWrongPolicy(IndentingWriter p) throws IOException {
+1774         p.pln("");
+1775     }
+1776     public void catchServantNotActive(IndentingWriter p) throws IOException {
+1777         p.pln("");
+1778     }
+1779     public void catchObjectNotActive(IndentingWriter p) throws IOException {
+1780         p.pln("");
+1781     }
+1782 
+1783     public void write_tie_thisObject_method(IndentingWriter p,
+1784                                             Identifier idCorbaObject)
+1785         throws IOException
+1786     {
+1787         if(POATie){
+1788             p.plnI("public " + idCorbaObject + " thisObject() {");
+1789             /*
+1790             p.pln("org.omg.CORBA.Object objref = null;");
+1791             p.pln("try{");
+1792             p.pln("objref = _poa().servant_to_reference(this);");
+1793             p.pln("}catch (org.omg.PortableServer.POAPackage.WrongPolicy exception){");
+1794             catchWrongPolicy(p);
+1795             p.pln("}catch (org.omg.PortableServer.POAPackage.ServantNotActive exception){");
+1796             catchServantNotActive(p);
+1797             p.pln("}");
+1798             p.pln("return objref;");
+1799             */
+1800             p.pln("return _this_object();");
+1801             p.pOln("}");
+1802         } else {
+1803             p.plnI("public " + idCorbaObject + " thisObject() {");
+1804             p.pln("return this;");
+1805             p.pOln("}");
+1806         }
+1807     }
+1808 
+1809     public void write_tie_deactivate_method(IndentingWriter p)
+1810         throws IOException
+1811     {
+1812         if(POATie){
+1813             p.plnI("public void deactivate() {");
+1814             p.pln("try{");
+1815             p.pln("_poa().deactivate_object(_poa().servant_to_id(this));");
+1816             p.pln("}catch (org.omg.PortableServer.POAPackage.WrongPolicy exception){");
+1817             catchWrongPolicy(p);
+1818             p.pln("}catch (org.omg.PortableServer.POAPackage.ObjectNotActive exception){");
+1819             catchObjectNotActive(p);
+1820             p.pln("}catch (org.omg.PortableServer.POAPackage.ServantNotActive exception){");
+1821             catchServantNotActive(p);
+1822             p.pln("}");
+1823             p.pOln("}");
+1824         } else {
+1825             p.plnI("public void deactivate() {");
+1826             p.pln("_orb().disconnect(this);");
+1827             p.pln("_set_delegate(null);");
+1828             p.pln("target = null;");
+1829             p.pOln("}");
+1830         }
+1831     }
+1832 
+1833     public void write_tie_orb_method(IndentingWriter p)
+1834         throws IOException
+1835     {
+1836         if(POATie){
+1837         p.plnI("public void orb(ORB orb) {");
+1838         /*
+1839         p.pln("try{");
+1840         p.pln("orb.connect(_poa().servant_to_reference(this));");
+1841         p.pln("}catch (org.omg.PortableServer.POAPackage.WrongPolicy exception){");
+1842         catchWrongPolicy(p);
+1843         p.pln("}catch (org.omg.PortableServer.POAPackage.ServantNotActive exception){");
+1844         catchServantNotActive(p);
+1845         p.pln("}");
+1846         */
+1847         p.pln("try {");
+1848         p.pln("    ((org.omg.CORBA_2_3.ORB)orb).set_delegate(this);");
 1849         p.pln("}");
-1850         */
-1851         p.pln("try {");
-1852         p.pln("    ((org.omg.CORBA_2_3.ORB)orb).set_delegate(this);");
+1850         p.pln("catch(ClassCastException e) {");
+1851         p.pln("    throw new org.omg.CORBA.BAD_PARAM");
+1852         p.pln("        (\"POA Servant requires an instance of org.omg.CORBA_2_3.ORB\");");
 1853         p.pln("}");
-1854         p.pln("catch(ClassCastException e) {");
-1855         p.pln("    throw new org.omg.CORBA.BAD_PARAM");
-1856         p.pln("        (\"POA Servant requires an instance of org.omg.CORBA_2_3.ORB\");");
-1857         p.pln("}");
+1854         p.pOln("}");
+1855         } else {
+1856         p.plnI("public void orb(ORB orb) {");
+1857         p.pln("orb.connect(this);");
 1858         p.pOln("}");
-1859         } else {
-1860         p.plnI("public void orb(ORB orb) {");
-1861         p.pln("orb.connect(this);");
-1862         p.pOln("}");
-1863         }
-1864     }
-1865 
-1866     public void write_tie__ids_method(IndentingWriter p)
-1867         throws IOException
-1868     {
-1869         if(POATie){
-1870         p.plnI("public String[] _all_interfaces(org.omg.PortableServer.POA poa, byte[] objectId){");
+1859         }
+1860     }
+1861 
+1862     public void write_tie__ids_method(IndentingWriter p)
+1863         throws IOException
+1864     {
+1865         if(POATie){
+1866         p.plnI("public String[] _all_interfaces(org.omg.PortableServer.POA poa, byte[] objectId){");
+1867         p.pln("return (String[]) _type_ids.clone();");
+1868         p.pOln("}");
+1869         } else {
+1870         p.plnI("public String[] _ids() { ");
 1871         p.pln("return (String[]) _type_ids.clone();");
 1872         p.pOln("}");
-1873         } else {
-1874         p.plnI("public String[] _ids() { ");
-1875         p.pln("return (String[]) _type_ids.clone();");
-1876         p.pOln("}");
-1877         }
-1878     }
-1879 
-1880 
-1881     StaticStringsHash getStringsHash (CompoundType.Method[] methods) {
-1882         if (useHash &amp;&amp; methods.length &gt; 1) {
-1883             String[] methodNames = new String[methods.length];
-1884             for (int i = 0; i &lt; methodNames.length; i++) {
-1885                 methodNames[i] = methods[i].getIDLName();
-1886             }
-1887             return new StaticStringsHash(methodNames);
-1888         }
-1889         return null;
-1890     }
-1891 
-1892     static boolean needNewReadStreamClass(Type type) {
-1893         if (type.isType(TYPE_ABSTRACT)) {
-1894             return true;
-1895         }
-1896         // Handle late-breaking special case for
-1897         // abstract IDL entities...
-1898         if ((type instanceof CompoundType) &amp;&amp;
-1899             ((CompoundType)type).isAbstractBase()) {
-1900             return true;
-1901         }
-1902         return needNewWriteStreamClass(type);
-1903     }
-1904 
-1905     static boolean needNewWriteStreamClass(Type type) {
-1906         switch (type.getTypeCode()) {
-1907         case TYPE_VOID:
-1908         case TYPE_BOOLEAN:
-1909         case TYPE_BYTE:
-1910         case TYPE_CHAR:
-1911         case TYPE_SHORT:
-1912         case TYPE_INT:
-1913         case TYPE_LONG:
-1914         case TYPE_FLOAT:
-1915         case TYPE_DOUBLE:           return false;
-1916 
-1917         case TYPE_STRING:           return true;
-1918         case TYPE_ANY:              return false;
-1919         case TYPE_CORBA_OBJECT:     return false;
-1920         case TYPE_REMOTE:           return false;
-1921         case TYPE_ABSTRACT:         return false;
-1922         case TYPE_NC_INTERFACE:     return true;
-1923         case TYPE_VALUE:            return true;
-1924         case TYPE_IMPLEMENTATION:   return true;
-1925         case TYPE_NC_CLASS:         return true;
-1926         case TYPE_ARRAY:            return true;
-1927         case TYPE_JAVA_RMI_REMOTE:  return false;
+1873         }
+1874     }
+1875 
+1876 
+1877     StaticStringsHash getStringsHash (CompoundType.Method[] methods) {
+1878         if (useHash &amp;&amp; methods.length &gt; 1) {
+1879             String[] methodNames = new String[methods.length];
+1880             for (int i = 0; i &lt; methodNames.length; i++) {
+1881                 methodNames[i] = methods[i].getIDLName();
+1882             }
+1883             return new StaticStringsHash(methodNames);
+1884         }
+1885         return null;
+1886     }
+1887 
+1888     static boolean needNewReadStreamClass(Type type) {
+1889         if (type.isType(TYPE_ABSTRACT)) {
+1890             return true;
+1891         }
+1892         // Handle late-breaking special case for
+1893         // abstract IDL entities...
+1894         if ((type instanceof CompoundType) &amp;&amp;
+1895             ((CompoundType)type).isAbstractBase()) {
+1896             return true;
+1897         }
+1898         return needNewWriteStreamClass(type);
+1899     }
+1900 
+1901     static boolean needNewWriteStreamClass(Type type) {
+1902         switch (type.getTypeCode()) {
+1903         case TYPE_VOID:
+1904         case TYPE_BOOLEAN:
+1905         case TYPE_BYTE:
+1906         case TYPE_CHAR:
+1907         case TYPE_SHORT:
+1908         case TYPE_INT:
+1909         case TYPE_LONG:
+1910         case TYPE_FLOAT:
+1911         case TYPE_DOUBLE:           return false;
+1912 
+1913         case TYPE_STRING:           return true;
+1914         case TYPE_ANY:              return false;
+1915         case TYPE_CORBA_OBJECT:     return false;
+1916         case TYPE_REMOTE:           return false;
+1917         case TYPE_ABSTRACT:         return false;
+1918         case TYPE_NC_INTERFACE:     return true;
+1919         case TYPE_VALUE:            return true;
+1920         case TYPE_IMPLEMENTATION:   return true;
+1921         case TYPE_NC_CLASS:         return true;
+1922         case TYPE_ARRAY:            return true;
+1923         case TYPE_JAVA_RMI_REMOTE:  return false;
+1924 
+1925         default: throw new Error("unexpected type code: " + type.getTypeCode());
+1926         }
+1927     }
 1928 
-1929         default: throw new Error("unexpected type code: " + type.getTypeCode());
-1930         }
-1931     }
-1932 
-1933     /*
-1934      * Decide which arguments need to be copied and write
-1935      * the copy code. Returns an array of argument names to
-1936      * use to refer to either the copy or the original.
-1937      */
-1938     String[] writeCopyArguments(CompoundType.Method method,
-1939                                 IndentingWriter p) throws IOException {
-1940 
-1941         Type[] args = method.getArguments();
-1942         String[] origNames = method.getArgumentNames();
-1943 
-1944         // Copy the current parameter names to a result array...
-1945 
-1946         String[] result = new String[origNames.length];
-1947         for (int i = 0; i &lt; result.length; i++) {
-1948             result[i] = origNames[i];
-1949         }
-1950 
-1951         // Decide which arguments must be copied, if any. If
-1952         // any of the arguments are types for which a 'real' copy
-1953         // will be done, rather than just an autoConnect, set
-1954         // realCopy = true. Note that abstract types may only
-1955         // need autoConnect, but we cannot know that at compile
-1956         // time...
-1957 
-1958         boolean realCopy = false;
-1959         boolean[] copyArg = new boolean[args.length];
-1960         int copyCount = 0;
-1961         int firstCopiedArg = 0; // Only used in single copy case.  It is only the first arg that
-1962                                 // needs copying IF copyCount == 1.
-1963 
-1964         for (int i = 0; i &lt; args.length; i++) {
-1965             if (mustCopy(args[i])) {
-1966                 copyArg[i] = true;
-1967                 copyCount++;
-1968                 firstCopiedArg = i;
-1969                 if (args[i].getTypeCode() != TYPE_REMOTE &amp;&amp;
-1970                     args[i].getTypeCode() != TYPE_IMPLEMENTATION) {
-1971                     realCopy = true;
-1972                 }
-1973             } else {
-1974                 copyArg[i] = false;
-1975             }
-1976         }
-1977 
-1978         // Do we have any types which must be copied?
-1979         if (copyCount &gt; 0) {
-1980             // Yes. Are we only doing the copy to ensure
-1981             // that autoConnect occurs?
-1982             if (realCopy) {
-1983                 // Nope. We need to go back thru the list and
-1984                 // mark any strings so that they will be copied
-1985                 // to preserve any shared references...
-1986                 for (int i = 0; i &lt; args.length; i++) {
-1987                     if (args[i].getTypeCode() == TYPE_STRING) {
-1988                         copyArg[i] = true;
-1989                         copyCount++;
-1990                     }
-1991                 }
-1992             }
-1993 
-1994             // We're ready to generate code. Do we have more than
-1995             // one to copy?
-1996             if (copyCount &gt; 1) {
-1997                 // Generate a call to copyObjects...
-1998                 String arrayName = getVariableName("copies");
-1999                 p.p("Object[] " + arrayName + " = Util.copyObjects(new Object[]{");
-2000                 boolean first = true;
-2001                 for (int i = 0; i &lt; args.length; i++) {
-2002                     if (copyArg[i]) {
-2003                         if (!first) {
-2004                             p.p(",");
-2005                         }
-2006                         first = false;
-2007                         p.p(origNames[i]);
-2008                     }
-2009                 }
-2010                 p.pln("},_orb());");
-2011 
-2012                 // For each of the types which was copied, create
-2013                 // a local temporary for it, updating the result
-2014                 // array with the new local parameter name...
-2015                 int copyIndex = 0 ;
-2016                 for (int i = 0; i &lt; args.length; i++) {
-2017                     if (copyArg[i]) {
-2018                         result[i] = getVariableName(result[i]+"Copy");
-2019                         p.pln( getName(args[i]) + " " + result[i] + " = (" + getName(args[i]) + ") " +
-2020                                arrayName + "[" + copyIndex++ +"];");
-2021                     }
-2022                 }
-2023             } else {
-2024                 // Generate a call to copyObject, updating the result
-2025                 // with the new local parameter name...
-2026                 result[firstCopiedArg] = getVariableName(result[firstCopiedArg]+"Copy");
-2027                 p.pln( getName(args[firstCopiedArg]) + " " + result[firstCopiedArg] + " = (" +
-2028                        getName(args[firstCopiedArg]) + ") Util.copyObject(" +
-2029                        origNames[firstCopiedArg] + ",_orb());");
-2030             }
-2031         }
-2032 
-2033         return result;
-2034     }
-2035 
-2036     static final String SINGLE_SLASH = "\\";
-2037     static final String DOUBLE_SLASH = SINGLE_SLASH + SINGLE_SLASH;
+1929     /*
+1930      * Decide which arguments need to be copied and write
+1931      * the copy code. Returns an array of argument names to
+1932      * use to refer to either the copy or the original.
+1933      */
+1934     String[] writeCopyArguments(CompoundType.Method method,
+1935                                 IndentingWriter p) throws IOException {
+1936 
+1937         Type[] args = method.getArguments();
+1938         String[] origNames = method.getArgumentNames();
+1939 
+1940         // Copy the current parameter names to a result array...
+1941 
+1942         String[] result = new String[origNames.length];
+1943         for (int i = 0; i &lt; result.length; i++) {
+1944             result[i] = origNames[i];
+1945         }
+1946 
+1947         // Decide which arguments must be copied, if any. If
+1948         // any of the arguments are types for which a 'real' copy
+1949         // will be done, rather than just an autoConnect, set
+1950         // realCopy = true. Note that abstract types may only
+1951         // need autoConnect, but we cannot know that at compile
+1952         // time...
+1953 
+1954         boolean realCopy = false;
+1955         boolean[] copyArg = new boolean[args.length];
+1956         int copyCount = 0;
+1957         int firstCopiedArg = 0; // Only used in single copy case.  It is only the first arg that
+1958                                 // needs copying IF copyCount == 1.
+1959 
+1960         for (int i = 0; i &lt; args.length; i++) {
+1961             if (mustCopy(args[i])) {
+1962                 copyArg[i] = true;
+1963                 copyCount++;
+1964                 firstCopiedArg = i;
+1965                 if (args[i].getTypeCode() != TYPE_REMOTE &amp;&amp;
+1966                     args[i].getTypeCode() != TYPE_IMPLEMENTATION) {
+1967                     realCopy = true;
+1968                 }
+1969             } else {
+1970                 copyArg[i] = false;
+1971             }
+1972         }
+1973 
+1974         // Do we have any types which must be copied?
+1975         if (copyCount &gt; 0) {
+1976             // Yes. Are we only doing the copy to ensure
+1977             // that autoConnect occurs?
+1978             if (realCopy) {
+1979                 // Nope. We need to go back thru the list and
+1980                 // mark any strings so that they will be copied
+1981                 // to preserve any shared references...
+1982                 for (int i = 0; i &lt; args.length; i++) {
+1983                     if (args[i].getTypeCode() == TYPE_STRING) {
+1984                         copyArg[i] = true;
+1985                         copyCount++;
+1986                     }
+1987                 }
+1988             }
+1989 
+1990             // We're ready to generate code. Do we have more than
+1991             // one to copy?
+1992             if (copyCount &gt; 1) {
+1993                 // Generate a call to copyObjects...
+1994                 String arrayName = getVariableName("copies");
+1995                 p.p("Object[] " + arrayName + " = Util.copyObjects(new Object[]{");
+1996                 boolean first = true;
+1997                 for (int i = 0; i &lt; args.length; i++) {
+1998                     if (copyArg[i]) {
+1999                         if (!first) {
+2000                             p.p(",");
+2001                         }
+2002                         first = false;
+2003                         p.p(origNames[i]);
+2004                     }
+2005                 }
+2006                 p.pln("},_orb());");
+2007 
+2008                 // For each of the types which was copied, create
+2009                 // a local temporary for it, updating the result
+2010                 // array with the new local parameter name...
+2011                 int copyIndex = 0 ;
+2012                 for (int i = 0; i &lt; args.length; i++) {
+2013                     if (copyArg[i]) {
+2014                         result[i] = getVariableName(result[i]+"Copy");
+2015                         p.pln( getName(args[i]) + " " + result[i] + " = (" + getName(args[i]) + ") " +
+2016                                arrayName + "[" + copyIndex++ +"];");
+2017                     }
+2018                 }
+2019             } else {
+2020                 // Generate a call to copyObject, updating the result
+2021                 // with the new local parameter name...
+2022                 result[firstCopiedArg] = getVariableName(result[firstCopiedArg]+"Copy");
+2023                 p.pln( getName(args[firstCopiedArg]) + " " + result[firstCopiedArg] + " = (" +
+2024                        getName(args[firstCopiedArg]) + ") Util.copyObject(" +
+2025                        origNames[firstCopiedArg] + ",_orb());");
+2026             }
+2027         }
+2028 
+2029         return result;
+2030     }
+2031 
+2032     static final String SINGLE_SLASH = "\\";
+2033     static final String DOUBLE_SLASH = SINGLE_SLASH + SINGLE_SLASH;
+2034 
+2035     String getRepositoryID(Type type) {
+2036         return IDLNames.replace(type.getRepositoryID(), SINGLE_SLASH, DOUBLE_SLASH);
+2037     }
 2038 
-2039     String getRepositoryID(Type type) {
-2040         return IDLNames.replace(type.getRepositoryID(), SINGLE_SLASH, DOUBLE_SLASH);
-2041     }
-2042 
-2043     String getExceptionRepositoryID(Type type) {
-2044         ClassType theType = (ClassType) type;
-2045         return IDLNames.getIDLRepositoryID(theType.getQualifiedIDLExceptionName(false));
-2046     }
-2047 
-2048     String getVariableName(String proposed) {
-2049         while (namesInUse.contains(proposed)) {
-2050             proposed = "$" + proposed;
-2051         }
-2052 
-2053         return proposed;
-2054     }
-2055 
-2056     void addNamesInUse(CompoundType.Method[] methods) {
-2057         for (int i = 0; i &lt; methods.length; i++) {
-2058             addNamesInUse(methods[i]);
-2059         }
-2060     }
-2061 
-2062     void addNamesInUse(CompoundType.Method method) {
-2063         String paramNames[] = method.getArgumentNames();
-2064         for (int i = 0; i &lt; paramNames.length; i++) {
-2065             addNameInUse(paramNames[i]);
-2066         }
+2039     String getExceptionRepositoryID(Type type) {
+2040         ClassType theType = (ClassType) type;
+2041         return IDLNames.getIDLRepositoryID(theType.getQualifiedIDLExceptionName(false));
+2042     }
+2043 
+2044     String getVariableName(String proposed) {
+2045         while (namesInUse.contains(proposed)) {
+2046             proposed = "$" + proposed;
+2047         }
+2048 
+2049         return proposed;
+2050     }
+2051 
+2052     void addNamesInUse(CompoundType.Method[] methods) {
+2053         for (int i = 0; i &lt; methods.length; i++) {
+2054             addNamesInUse(methods[i]);
+2055         }
+2056     }
+2057 
+2058     void addNamesInUse(CompoundType.Method method) {
+2059         String paramNames[] = method.getArgumentNames();
+2060         for (int i = 0; i &lt; paramNames.length; i++) {
+2061             addNameInUse(paramNames[i]);
+2062         }
+2063     }
+2064 
+2065     void addNameInUse(String name) {
+2066         namesInUse.add(name);
 2067     }
 2068 
-2069     void addNameInUse(String name) {
-2070         namesInUse.add(name);
-2071     }
-2072 
-2073     static boolean mustCopy(Type type) {
-2074         switch (type.getTypeCode()) {
-2075         case TYPE_VOID:
-2076         case TYPE_BOOLEAN:
-2077         case TYPE_BYTE:
-2078         case TYPE_CHAR:
-2079         case TYPE_SHORT:
-2080         case TYPE_INT:
-2081         case TYPE_LONG:
-2082         case TYPE_FLOAT:
-2083         case TYPE_DOUBLE:
-2084         case TYPE_STRING:           return false;
+2069     static boolean mustCopy(Type type) {
+2070         switch (type.getTypeCode()) {
+2071         case TYPE_VOID:
+2072         case TYPE_BOOLEAN:
+2073         case TYPE_BYTE:
+2074         case TYPE_CHAR:
+2075         case TYPE_SHORT:
+2076         case TYPE_INT:
+2077         case TYPE_LONG:
+2078         case TYPE_FLOAT:
+2079         case TYPE_DOUBLE:
+2080         case TYPE_STRING:           return false;
+2081 
+2082         case TYPE_ANY:              return true;
+2083 
+2084         case TYPE_CORBA_OBJECT:     return false;
 2085 
-2086         case TYPE_ANY:              return true;
-2087 
-2088         case TYPE_CORBA_OBJECT:     return false;
-2089 
-2090         case TYPE_REMOTE:
-2091         case TYPE_ABSTRACT:
-2092         case TYPE_NC_INTERFACE:
-2093         case TYPE_VALUE:
-2094         case TYPE_IMPLEMENTATION:
-2095         case TYPE_NC_CLASS:
-2096         case TYPE_ARRAY:
-2097         case TYPE_JAVA_RMI_REMOTE:  return true;
+2086         case TYPE_REMOTE:
+2087         case TYPE_ABSTRACT:
+2088         case TYPE_NC_INTERFACE:
+2089         case TYPE_VALUE:
+2090         case TYPE_IMPLEMENTATION:
+2091         case TYPE_NC_CLASS:
+2092         case TYPE_ARRAY:
+2093         case TYPE_JAVA_RMI_REMOTE:  return true;
+2094 
+2095         default: throw new Error("unexpected type code: " + type.getTypeCode());
+2096         }
+2097     }
 2098 
-2099         default: throw new Error("unexpected type code: " + type.getTypeCode());
-2100         }
-2101     }
+2099     ValueType[] getStubExceptions (CompoundType.Method method, boolean sort) {
+2100 
+2101         ValueType[] list = method.getFilteredStubExceptions(method.getExceptions());
 2102 
-2103     ValueType[] getStubExceptions (CompoundType.Method method, boolean sort) {
-2104 
-2105         ValueType[] list = method.getFilteredStubExceptions(method.getExceptions());
-2106 
-2107         // Sort the list so that all org.omg.CORBA.UserException
-2108         // subtypes are at the beginning of the list.  This ensures
-2109         // that the stub will not call read_string() before calling
-2110         // XXHelper.read().
+2103         // Sort the list so that all org.omg.CORBA.UserException
+2104         // subtypes are at the beginning of the list.  This ensures
+2105         // that the stub will not call read_string() before calling
+2106         // XXHelper.read().
+2107 
+2108         if (sort) {
+2109             Arrays.sort(list,new UserExceptionComparator());
+2110             }
 2111 
-2112         if (sort) {
-2113             Arrays.sort(list,new UserExceptionComparator());
-2114             }
-2115 
-2116         return list;
-2117                 }
+2112         return list;
+2113                 }
+2114 
+2115     ValueType[] getTieExceptions (CompoundType.Method method) {
+2116         return method.getUniqueCatchList(method.getImplExceptions());
+2117     }
 2118 
-2119     ValueType[] getTieExceptions (CompoundType.Method method) {
-2120         return method.getUniqueCatchList(method.getImplExceptions());
-2121     }
-2122 
-2123     void writeTieMethod(IndentingWriter p, CompoundType type,
-2124                         CompoundType.Method method) throws IOException {
-2125         String methodName = method.getName();
-2126         Type paramTypes[] = method.getArguments();
-2127         String paramNames[] = method.getArgumentNames();
-2128         Type returnType = method.getReturnType();
-2129         ValueType[] exceptions = getTieExceptions(method);
-2130         String in = getVariableName("in");
-2131         String ex = getVariableName("ex");
-2132         String out = getVariableName("out");
-2133         String reply = getVariableName("reply");
-2134 
-2135         for (int i = 0; i &lt; paramTypes.length; i++) {
-2136             p.p(getName(paramTypes[i])+" "+paramNames[i]+" = ");
-2137             writeUnmarshalArgument(p, in, paramTypes[i], null);
-2138             p.pln();
-2139         }
-2140 
-2141         boolean handleExceptions = exceptions != null;
-2142         boolean doReturn = !returnType.isType(TYPE_VOID);
-2143 
-2144         if (handleExceptions &amp;&amp; doReturn) {
-2145             String objName = testUtil(getName(returnType), returnType);
-2146             p.pln(objName+" result;");
-2147         }
-2148 
-2149         if (handleExceptions)
-2150             p.plnI("try {");
-2151 
-2152         if (doReturn) {
-2153             if (handleExceptions) {
-2154                 p.p("result = ");
-2155             } else {
-2156                 p.p(getName(returnType)+" result = ");
-2157             }
-2158         }
-2159 
-2160         p.p("sTarget."+methodName+"(");
-2161         for(int i = 0; i &lt; paramNames.length; i++) {
-2162             if (i &gt; 0)
-2163                 p.p(", ");
-2164             p.p(paramNames[i]);
-2165         }
-2166         p.pln(");");
+2119     void writeTieMethod(IndentingWriter p, CompoundType type,
+2120                         CompoundType.Method method) throws IOException {
+2121         String methodName = method.getName();
+2122         Type paramTypes[] = method.getArguments();
+2123         String paramNames[] = method.getArgumentNames();
+2124         Type returnType = method.getReturnType();
+2125         ValueType[] exceptions = getTieExceptions(method);
+2126         String in = getVariableName("in");
+2127         String ex = getVariableName("ex");
+2128         String out = getVariableName("out");
+2129         String reply = getVariableName("reply");
+2130 
+2131         for (int i = 0; i &lt; paramTypes.length; i++) {
+2132             p.p(getName(paramTypes[i])+" "+paramNames[i]+" = ");
+2133             writeUnmarshalArgument(p, in, paramTypes[i], null);
+2134             p.pln();
+2135         }
+2136 
+2137         boolean handleExceptions = exceptions != null;
+2138         boolean doReturn = !returnType.isType(TYPE_VOID);
+2139 
+2140         if (handleExceptions &amp;&amp; doReturn) {
+2141             String objName = testUtil(getName(returnType), returnType);
+2142             p.pln(objName+" result;");
+2143         }
+2144 
+2145         if (handleExceptions)
+2146             p.plnI("try {");
+2147 
+2148         if (doReturn) {
+2149             if (handleExceptions) {
+2150                 p.p("result = ");
+2151             } else {
+2152                 p.p(getName(returnType)+" result = ");
+2153             }
+2154         }
+2155 
+2156         p.p("target."+methodName+"(");
+2157         for(int i = 0; i &lt; paramNames.length; i++) {
+2158             if (i &gt; 0)
+2159                 p.p(", ");
+2160             p.p(paramNames[i]);
+2161         }
+2162         p.pln(");");
+2163 
+2164         if (handleExceptions) {
+2165             for(int i = 0; i &lt; exceptions.length; i++) {
+2166                 p.pOlnI("} catch ("+getName(exceptions[i])+" "+ex+") {");
 2167 
-2168         if (handleExceptions) {
-2169             for(int i = 0; i &lt; exceptions.length; i++) {
-2170                 p.pOlnI("} catch ("+getName(exceptions[i])+" "+ex+") {");
+2168                 // Is this our IDLEntity Exception special case?
+2169 
+2170                 if (exceptions[i].isIDLEntityException() &amp;&amp; !exceptions[i].isCORBAUserException()) {
 2171 
-2172                 // Is this our IDLEntity Exception special case?
+2172                                 // Yes...
 2173 
-2174                 if (exceptions[i].isIDLEntityException() &amp;&amp; !exceptions[i].isCORBAUserException()) {
-2175 
-2176                                 // Yes...
-2177 
-2178                     String helperName = IDLNames.replace(exceptions[i].getQualifiedIDLName(false),"::",".");
-2179                     helperName += "Helper";
-2180                     p.pln(idOutputStream+" "+out +" = "+reply+".createExceptionReply();");
-2181                     p.pln(helperName+".write("+out+","+ex+");");
+2174                     String helperName = IDLNames.replace(exceptions[i].getQualifiedIDLName(false),"::",".");
+2175                     helperName += "Helper";
+2176                     p.pln(idOutputStream+" "+out +" = "+reply+".createExceptionReply();");
+2177                     p.pln(helperName+".write("+out+","+ex+");");
+2178 
+2179                 } else {
+2180 
+2181                                 // No...
 2182 
-2183                 } else {
-2184 
-2185                                 // No...
-2186 
-2187                     p.pln("String id = \"" + getExceptionRepositoryID(exceptions[i]) + "\";");
-2188                 p.plnI(idExtOutputStream + " "+out+" = ");
-2189                 p.pln("(" + idExtOutputStream + ") "+reply+".createExceptionReply();");
-2190                 p.pOln(out+".write_string(id);");
-2191                     p.pln(out+".write_value("+ex+"," + getName(exceptions[i]) + ".class);");
-2192                 }
-2193 
-2194                 p.pln("return "+out+";");
-2195             }
-2196             p.pOln("}");
-2197         }
-2198 
-2199         if (needNewWriteStreamClass(returnType)) {
-2200             p.plnI(idExtOutputStream + " "+out+" = ");
-2201             p.pln("(" + idExtOutputStream + ") "+reply+".createReply();");
-2202             p.pO();
-2203         } else {
-2204             p.pln("OutputStream "+out+" = "+reply+".createReply();");
-2205         }
-2206 
-2207         if (doReturn) {
-2208             writeMarshalArgument(p, out, returnType, "result");
-2209             p.pln();
-2210         }
+2183                     p.pln("String id = \"" + getExceptionRepositoryID(exceptions[i]) + "\";");
+2184                 p.plnI(idExtOutputStream + " "+out+" = ");
+2185                 p.pln("(" + idExtOutputStream + ") "+reply+".createExceptionReply();");
+2186                 p.pOln(out+".write_string(id);");
+2187                     p.pln(out+".write_value("+ex+"," + getName(exceptions[i]) + ".class);");
+2188                 }
+2189 
+2190                 p.pln("return "+out+";");
+2191             }
+2192             p.pOln("}");
+2193         }
+2194 
+2195         if (needNewWriteStreamClass(returnType)) {
+2196             p.plnI(idExtOutputStream + " "+out+" = ");
+2197             p.pln("(" + idExtOutputStream + ") "+reply+".createReply();");
+2198             p.pO();
+2199         } else {
+2200             p.pln("OutputStream "+out+" = "+reply+".createReply();");
+2201         }
+2202 
+2203         if (doReturn) {
+2204             writeMarshalArgument(p, out, returnType, "result");
+2205             p.pln();
+2206         }
+2207 
+2208         p.pln("return "+out+";");
+2209     }
+2210 
 2211 
-2212         p.pln("return "+out+";");
-2213     }
-2214 
-2215 
-2216     /**
-2217      * Write Java statements to marshal a series of values in order as
-2218      * named in the "names" array, with types as specified in the "types"
-2219      * array", to the java.io.ObjectOutput stream named "stream".
-2220      */
-2221     void writeMarshalArguments(IndentingWriter p,
-2222                                String streamName,
-2223                                Type[] types, String[] names)
-2224         throws IOException
-2225     {
-2226         if (types.length != names.length) {
-2227             throw new Error("paramter type and name arrays different sizes");
-2228         }
-2229 
-2230         for (int i = 0; i &lt; types.length; i++) {
-2231             writeMarshalArgument(p, streamName, types[i], names[i]);
-2232             if (i != types.length -1) {
-2233                 p.pln();
-2234             }
-2235         }
-2236     }
-2237 
-2238     /**
-2239      * Added for IASRI 4987274. Remote classes named "Util" were
-2240      * getting confused with javax.rmi.CORBA.Util and the
-2241      * unqualifiedName "Util".
-2242      */
-2243     String testUtil(String objectName, Type ttype) {
-2244         if (objectName.equals("Util")) {
-2245                 String correctedName = (String)ttype.getPackageName() + "." + objectName;
-2246                 return correctedName;
-2247         } else {
-2248                 return objectName;
-2249         }
-2250     }
-2251 }
-2252 
-2253 class StringComparator implements java.util.Comparator {
-2254     public int compare(Object o1, Object o2) {
-2255         String s1 = (String)o1;
-2256         String s2 = (String)o2;
-2257         return s1.compareTo(s2);
-2258     }
-2259 }
-2260 
-2261 
-2262 class UserExceptionComparator implements java.util.Comparator {
-2263     public int compare(Object o1, Object o2) {
-2264         ValueType v1 = (ValueType)o1;
-2265         ValueType v2 = (ValueType)o2;
-2266         int result = 0;
-2267         if (isUserException(v1)) {
-2268             if (!isUserException(v2)) {
-2269                 result = -1;
+2212     /**
+2213      * Write Java statements to marshal a series of values in order as
+2214      * named in the "names" array, with types as specified in the "types"
+2215      * array", to the java.io.ObjectOutput stream named "stream".
+2216      */
+2217     void writeMarshalArguments(IndentingWriter p,
+2218                                String streamName,
+2219                                Type[] types, String[] names)
+2220         throws IOException
+2221     {
+2222         if (types.length != names.length) {
+2223             throw new Error("paramter type and name arrays different sizes");
+2224         }
+2225 
+2226         for (int i = 0; i &lt; types.length; i++) {
+2227             writeMarshalArgument(p, streamName, types[i], names[i]);
+2228             if (i != types.length -1) {
+2229                 p.pln();
+2230             }
+2231         }
+2232     }
+2233 
+2234     /**
+2235      * Added for IASRI 4987274. Remote classes named "Util" were
+2236      * getting confused with javax.rmi.CORBA.Util and the
+2237      * unqualifiedName "Util".
+2238      */
+2239     String testUtil(String objectName, Type ttype) {
+2240         if (objectName.equals("Util")) {
+2241                 String correctedName = (String)ttype.getPackageName() + "." + objectName;
+2242                 return correctedName;
+2243         } else {
+2244                 return objectName;
+2245         }
+2246     }
+2247 }
+2248 
+2249 class StringComparator implements java.util.Comparator {
+2250     public int compare(Object o1, Object o2) {
+2251         String s1 = (String)o1;
+2252         String s2 = (String)o2;
+2253         return s1.compareTo(s2);
+2254     }
+2255 }
+2256 
+2257 
+2258 class UserExceptionComparator implements java.util.Comparator {
+2259     public int compare(Object o1, Object o2) {
+2260         ValueType v1 = (ValueType)o1;
+2261         ValueType v2 = (ValueType)o2;
+2262         int result = 0;
+2263         if (isUserException(v1)) {
+2264             if (!isUserException(v2)) {
+2265                 result = -1;
+2266             }
+2267         } else if (isUserException(v2)) {
+2268             if (!isUserException(v1)) {
+2269                 result = 1;
 2270             }
-2271         } else if (isUserException(v2)) {
-2272             if (!isUserException(v1)) {
-2273                 result = 1;
-2274             }
-2275         }
-2276         return result;
+2271         }
+2272         return result;
+2273     }
+2274 
+2275     final boolean isUserException(ValueType it) {
+2276         return it.isIDLEntityException() &amp;&amp; !it.isCORBAUserException();
 2277     }
-2278 
-2279     final boolean isUserException(ValueType it) {
-2280         return it.isIDLEntityException() &amp;&amp; !it.isCORBAUserException();
-2281     }
-2282 }
+2278 }
 </pre></body></html>

@@ -107,29 +107,15 @@ hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
           // Write the ids...
           writeIds( p, theType, true ) ;
   
-<hr /><span class="oldmarker">*** 1677,1686 ****</span>
-<span class="newmarker">--- 1677,1687 ----</span>
-          // Register all the argument names used, plus our
-          // data member names...
-  
-          addNamesInUse(remoteMethods);
-          addNameInUse("target");
-<span class="new">+         addNameInUse("sTarget");</span>
-          addNameInUse("_type_ids");
-  
-          // Write the _invoke method...
-          p.pln();
-  
 <hr /><span class="oldmarker">*** 1693,1702 ****</span>
-<span class="newmarker">--- 1694,1708 ----</span>
+<span class="newmarker">--- 1693,1706 ----</span>
           p.plnI("public OutputStream  _invoke(String "+method+", InputStream "+_in+", " +
                  "ResponseHandler "+reply+") throws SystemException {");
   
           if (remoteMethods.length &gt; 0) {
               p.plnI("try {");
-<span class="new">+             p.pln(getName(theType) + " sTarget;");</span>
-<span class="new">+             p.pln("sTarget = target;");</span>
-<span class="new">+             p.plnI("if (sTarget == null) {");</span>
+<span class="new">+             p.pln(getName(theType) + " target = this.target;");</span>
+<span class="new">+             p.plnI("if (target == null) {");</span>
 <span class="new">+             p.pln("throw new java.io.IOException();");</span>
 <span class="new">+             p.pOln("}");</span>
               p.plnI(idExtInputStream + " "+in+" = ");
@@ -137,45 +123,5 @@ hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
               p.pO();
   
               // See if we should use a hash table style
-<hr /><span class="oldmarker">*** 1819,1830 ****</span>
-<span class="newmarker">--- 1825,1838 ----</span>
-              p.pOln("}");
-          } else {
-              p.plnI("public void deactivate() {");
-              p.pln("_orb().disconnect(this);");
-              p.pln("_set_delegate(null);");
-<span class="new">+             p.plnI("synchronized(this) {");</span>
-              p.pln("target = null;");
-              p.pOln("}");
-<span class="new">+             p.pOln("}");</span>
-          }
-      }
-  
-      public void write_tie_orb_method(IndentingWriter p)
-          throws IOException
-<hr /><span class="oldmarker">*** 2147,2157 ****</span>
-              } else {
-                  p.p(getName(returnType)+" result = ");
-              }
-          }
-  
-<span class="changed">!         p.p("target."+methodName+"(");</span>
-          for(int i = 0; i &lt; paramNames.length; i++) {
-              if (i &gt; 0)
-                  p.p(", ");
-              p.p(paramNames[i]);
-          }
-<span class="newmarker">--- 2155,2165 ----</span>
-              } else {
-                  p.p(getName(returnType)+" result = ");
-              }
-          }
-  
-<span class="changed">!         p.p("sTarget."+methodName+"(");</span>
-          for(int i = 0; i &lt; paramNames.length; i++) {
-              if (i &gt; 0)
-                  p.p(", ");
-              p.p(paramNames[i]);
-          }
 </pre></body></html>
 

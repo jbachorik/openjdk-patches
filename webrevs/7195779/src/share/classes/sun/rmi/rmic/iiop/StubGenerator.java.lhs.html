@@ -1763,7 +1763,6 @@ hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
 1679 
 1680         addNamesInUse(remoteMethods);
 1681         addNameInUse("target");
-<a name="2" id="anc2"></a>
 1682         addNameInUse("_type_ids");
 1683 
 1684         // Write the _invoke method...
@@ -1780,8 +1779,7 @@ hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
 1695 
 1696         if (remoteMethods.length &gt; 0) {
 1697             p.plnI("try {");
-<a name="3" id="anc3"></a>
-
+<a name="2" id="anc2"></a>
 
 
 
@@ -1911,10 +1909,8 @@ hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
 1821             p.plnI("public void deactivate() {");
 1822             p.pln("_orb().disconnect(this);");
 1823             p.pln("_set_delegate(null);");
-<a name="4" id="anc4"></a>
 1824             p.pln("target = null;");
 1825             p.pOln("}");
-<a name="5" id="anc5"></a>
 1826         }
 1827     }
 1828 
@@ -2241,7 +2237,7 @@ hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
 2149             }
 2150         }
 2151 
-<a name="6" id="anc6"></a><span class="changed">2152         p.p("target."+methodName+"(");</span>
+2152         p.p("target."+methodName+"(");
 2153         for(int i = 0; i &lt; paramNames.length; i++) {
 2154             if (i &gt; 0)
 2155                 p.p(", ");
@@ -2364,7 +2360,7 @@ hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
 2272         return it.isIDLEntityException() &amp;&amp; !it.isCORBAUserException();
 2273     }
 2274 }
-<a name="7" id="anc7"></a><b style="font-size: large; color: red">--- EOF ---</b>
+<a name="3" id="anc3"></a><b style="font-size: large; color: red">--- EOF ---</b>
 
 
 
@@ -2444,4 +2440,4 @@ hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
 
 
 
-</pre><form name="eof"><input name="value" value="7" type="hidden" /></form></body></html>
+</pre><form name="eof"><input name="value" value="3" type="hidden" /></form></body></html>

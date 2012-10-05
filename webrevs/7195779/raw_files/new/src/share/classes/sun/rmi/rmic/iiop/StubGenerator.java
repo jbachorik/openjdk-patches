@@ -1679,7 +1679,6 @@ public class StubGenerator extends sun.rmi.rmic.iiop.Generator {
 
         addNamesInUse(remoteMethods);
         addNameInUse("target");
-        addNameInUse("sTarget");
         addNameInUse("_type_ids");
 
         // Write the _invoke method...
@@ -1696,9 +1695,8 @@ public class StubGenerator extends sun.rmi.rmic.iiop.Generator {
 
         if (remoteMethods.length > 0) {
             p.plnI("try {");
-            p.pln(getName(theType) + " sTarget;");
-            p.pln("sTarget = target;");
-            p.plnI("if (sTarget == null) {");
+            p.pln(getName(theType) + " target = this.target;");
+            p.plnI("if (target == null) {");
             p.pln("throw new java.io.IOException();");
             p.pOln("}");
             p.plnI(idExtInputStream + " "+in+" = ");
@@ -1827,9 +1825,7 @@ public class StubGenerator extends sun.rmi.rmic.iiop.Generator {
             p.plnI("public void deactivate() {");
             p.pln("_orb().disconnect(this);");
             p.pln("_set_delegate(null);");
-            p.plnI("synchronized(this) {");
             p.pln("target = null;");
-            p.pOln("}");
             p.pOln("}");
         }
     }
@@ -2157,7 +2153,7 @@ public class StubGenerator extends sun.rmi.rmic.iiop.Generator {
             }
         }
 
-        p.p("sTarget."+methodName+"(");
+        p.p("target."+methodName+"(");
         for(int i = 0; i < paramNames.length; i++) {
             if (i > 0)
                 p.p(", ");
