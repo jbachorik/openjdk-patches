@@ -1,0 +1,896 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+    <script type="text/javascript" src="../../../../../ancnav.js"></script>
+    </head>
+    <body id="SUNWwebrev" onkeypress="keypress(event);">
+    <a name="0"></a>
+    <pre>rev 5921 : [mq]: JDK-<a href="http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=6783290">6783290</a></pre><hr></hr>
+<pre>
+   1 /*
+   2  * Copyright (c) 1999, 2008, Oracle and/or its affiliates. All rights reserved.
+   3  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+   4  *
+   5  * This code is free software; you can redistribute it and/or modify it
+   6  * under the terms of the GNU General Public License version 2 only, as
+   7  * published by the Free Software Foundation.  Oracle designates this
+   8  * particular file as subject to the "Classpath" exception as provided
+   9  * by Oracle in the LICENSE file that accompanied this code.
+  10  *
+  11  * This code is distributed in the hope that it will be useful, but WITHOUT
+  12  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+  13  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+  14  * version 2 for more details (a copy is included in the LICENSE file that
+  15  * accompanied this code).
+  16  *
+  17  * You should have received a copy of the GNU General Public License version
+  18  * 2 along with this work; if not, write to the Free Software Foundation,
+  19  * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+  20  *
+  21  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+  22  * or visit www.oracle.com if you need additional information or have any
+  23  * questions.
+  24  */
+  25 
+  26 package javax.management;
+  27 
+  28 import java.io.IOException;
+  29 import java.io.StreamCorruptedException;
+  30 import java.io.Serializable;
+  31 import java.io.ObjectOutputStream;
+  32 import java.io.ObjectInputStream;
+  33 import java.lang.reflect.Method;
+  34 import java.util.Arrays;
+  35 import java.util.Map;
+  36 import java.util.WeakHashMap;
+  37 import java.security.AccessController;
+  38 import java.security.PrivilegedAction;
+  39 
+  40 import static javax.management.ImmutableDescriptor.nonNullDescriptor;
+  41 
+  42 /**
+  43  * &lt;p&gt;Describes the management interface exposed by an MBean; that is,
+  44  * the set of attributes and operations which are available for
+  45  * management operations.  Instances of this class are immutable.
+  46  * Subclasses may be mutable but this is not recommended.&lt;/p&gt;
+  47  *
+  48  * &lt;p id="info-changed"&gt;Usually the {@code MBeanInfo} for any given MBean does
+  49  * not change over the lifetime of that MBean.  Dynamic MBeans can change their
+  50  * {@code MBeanInfo} and in that case it is recommended that they emit a {@link
+  51  * Notification} with a {@linkplain Notification#getType() type} of {@code
+  52  * "jmx.mbean.info.changed"} and a {@linkplain Notification#getUserData()
+  53  * userData} that is the new {@code MBeanInfo}.  This is not required, but
+  54  * provides a conventional way for clients of the MBean to discover the change.
+  55  * See also the &lt;a href="Descriptor.html#immutableInfo"&gt;immutableInfo&lt;/a&gt; and
+  56  * &lt;a href="Descriptor.html#infoTimeout"&gt;infoTimeout&lt;/a&gt; fields in the {@code
+  57  * MBeanInfo} {@link Descriptor}.&lt;/p&gt;
+  58  *
+  59  * &lt;p&gt;The contents of the &lt;code&gt;MBeanInfo&lt;/code&gt; for a Dynamic MBean
+  60  * are determined by its {@link DynamicMBean#getMBeanInfo
+  61  * getMBeanInfo()} method.  This includes Open MBeans and Model
+  62  * MBeans, which are kinds of Dynamic MBeans.&lt;/p&gt;
+  63  *
+  64  * &lt;p&gt;The contents of the &lt;code&gt;MBeanInfo&lt;/code&gt; for a Standard MBean
+  65  * are determined by the MBean server as follows:&lt;/p&gt;
+  66  *
+  67  * &lt;ul&gt;
+  68  *
+  69  * &lt;li&gt;{@link #getClassName()} returns the Java class name of the MBean
+  70  * object;
+  71  *
+  72  * &lt;li&gt;{@link #getConstructors()} returns the list of all public
+  73  * constructors in that object;
+  74  *
+  75  * &lt;li&gt;{@link #getAttributes()} returns the list of all attributes
+  76  * whose existence is deduced from the presence in the MBean interface
+  77  * of a &lt;code&gt;get&lt;i&gt;Name&lt;/i&gt;&lt;/code&gt;, &lt;code&gt;is&lt;i&gt;Name&lt;/i&gt;&lt;/code&gt;, or
+  78  * &lt;code&gt;set&lt;i&gt;Name&lt;/i&gt;&lt;/code&gt; method that conforms to the conventions
+  79  * for Standard MBeans;
+  80  *
+  81  * &lt;li&gt;{@link #getOperations()} returns the list of all methods in
+  82  * the MBean interface that do not represent attributes;
+  83  *
+  84  * &lt;li&gt;{@link #getNotifications()} returns an empty array if the MBean
+  85  * does not implement the {@link NotificationBroadcaster} interface,
+  86  * otherwise the result of calling {@link
+  87  * NotificationBroadcaster#getNotificationInfo()} on it;
+  88  *
+  89  * &lt;li&gt;{@link #getDescriptor()} returns a descriptor containing the contents
+  90  * of any descriptor annotations in the MBean interface (see
+  91  * {@link DescriptorKey &amp;#64;DescriptorKey}).
+  92  *
+  93  * &lt;/ul&gt;
+  94  *
+  95  * &lt;p&gt;The description returned by {@link #getDescription()} and the
+  96  * descriptions of the contained attributes and operations are not specified.&lt;/p&gt;
+  97  *
+  98  * &lt;p&gt;The remaining details of the &lt;code&gt;MBeanInfo&lt;/code&gt; for a
+  99  * Standard MBean are not specified.  This includes the description of
+ 100  * any contained constructors, and notifications; the names
+ 101  * of parameters to constructors and operations; and the descriptions of
+ 102  * constructor parameters.&lt;/p&gt;
+ 103  *
+ 104  * @since 1.5
+ 105  */
+ 106 public class MBeanInfo implements Cloneable, Serializable, DescriptorRead {
+ 107 
+ 108     /* Serial version */
+ 109     static final long serialVersionUID = -6451021435135161911L;
+ 110 
+ 111     /**
+ 112      * @serial The Descriptor for the MBean.  This field
+ 113      * can be null, which is equivalent to an empty Descriptor.
+ 114      */
+ 115     private transient Descriptor descriptor;
+ 116 
+ 117     /**
+ 118      * @serial The human readable description of the class.
+ 119      */
+ 120     private final String description;
+ 121 
+ 122     /**
+ 123      * @serial The MBean qualified name.
+ 124      */
+ 125     private final String className;
+ 126 
+ 127     /**
+ 128      * @serial The MBean attribute descriptors.
+ 129      */
+ 130     private final MBeanAttributeInfo[] attributes;
+ 131 
+ 132     /**
+ 133      * @serial The MBean operation descriptors.
+ 134      */
+ 135     private final MBeanOperationInfo[] operations;
+ 136 
+ 137      /**
+ 138      * @serial The MBean constructor descriptors.
+ 139      */
+ 140     private final MBeanConstructorInfo[] constructors;
+ 141 
+ 142     /**
+ 143      * @serial The MBean notification descriptors.
+ 144      */
+ 145     private final MBeanNotificationInfo[] notifications;
+ 146 
+ 147     private transient int hashCode;
+ 148 
+ 149     /**
+ 150      * &lt;p&gt;True if this class is known not to override the array-valued
+ 151      * getters of MBeanInfo.  Obviously true for MBeanInfo itself, and true
+ 152      * for a subclass where we succeed in reflecting on the methods
+ 153      * and discover they are not overridden.&lt;/p&gt;
+ 154      *
+ 155      * &lt;p&gt;The purpose of this variable is to avoid cloning the arrays
+ 156      * when doing operations like {@link #equals} where we know they
+ 157      * will not be changed.  If a subclass overrides a getter, we
+ 158      * cannot access the corresponding array directly.&lt;/p&gt;
+ 159      */
+ 160     private final transient boolean arrayGettersSafe;
+ 161 
+ 162     /**
+ 163      * Constructs an &lt;CODE&gt;MBeanInfo&lt;/CODE&gt;.
+ 164      *
+ 165      * @param className The name of the Java class of the MBean described
+ 166      * by this &lt;CODE&gt;MBeanInfo&lt;/CODE&gt;.  This value may be any
+ 167      * syntactically legal Java class name.  It does not have to be a
+ 168      * Java class known to the MBean server or to the MBean's
+ 169      * ClassLoader.  If it is a Java class known to the MBean's
+ 170      * ClassLoader, it is recommended but not required that the
+ 171      * class's public methods include those that would appear in a
+ 172      * Standard MBean implementing the attributes and operations in
+ 173      * this MBeanInfo.
+ 174      * @param description A human readable description of the MBean (optional).
+ 175      * @param attributes The list of exposed attributes of the MBean.
+ 176      * This may be null with the same effect as a zero-length array.
+ 177      * @param constructors The list of public constructors of the
+ 178      * MBean.  This may be null with the same effect as a zero-length
+ 179      * array.
+ 180      * @param operations The list of operations of the MBean.  This
+ 181      * may be null with the same effect as a zero-length array.
+ 182      * @param notifications The list of notifications emitted.  This
+ 183      * may be null with the same effect as a zero-length array.
+ 184      */
+ 185     public MBeanInfo(String className,
+ 186                      String description,
+ 187                      MBeanAttributeInfo[] attributes,
+ 188                      MBeanConstructorInfo[] constructors,
+ 189                      MBeanOperationInfo[] operations,
+ 190                      MBeanNotificationInfo[] notifications)
+ 191             throws IllegalArgumentException {
+ 192         this(className, description, attributes, constructors, operations,
+ 193              notifications, null);
+ 194     }
+ 195 
+ 196     /**
+ 197      * Constructs an &lt;CODE&gt;MBeanInfo&lt;/CODE&gt;.
+ 198      *
+ 199      * @param className The name of the Java class of the MBean described
+ 200      * by this &lt;CODE&gt;MBeanInfo&lt;/CODE&gt;.  This value may be any
+ 201      * syntactically legal Java class name.  It does not have to be a
+ 202      * Java class known to the MBean server or to the MBean's
+ 203      * ClassLoader.  If it is a Java class known to the MBean's
+ 204      * ClassLoader, it is recommended but not required that the
+ 205      * class's public methods include those that would appear in a
+ 206      * Standard MBean implementing the attributes and operations in
+ 207      * this MBeanInfo.
+ 208      * @param description A human readable description of the MBean (optional).
+ 209      * @param attributes The list of exposed attributes of the MBean.
+ 210      * This may be null with the same effect as a zero-length array.
+ 211      * @param constructors The list of public constructors of the
+ 212      * MBean.  This may be null with the same effect as a zero-length
+ 213      * array.
+ 214      * @param operations The list of operations of the MBean.  This
+ 215      * may be null with the same effect as a zero-length array.
+ 216      * @param notifications The list of notifications emitted.  This
+ 217      * may be null with the same effect as a zero-length array.
+ 218      * @param descriptor The descriptor for the MBean.  This may be null
+ 219      * which is equivalent to an empty descriptor.
+ 220      *
+ 221      * @since 1.6
+ 222      */
+ 223     public MBeanInfo(String className,
+ 224                      String description,
+ 225                      MBeanAttributeInfo[] attributes,
+ 226                      MBeanConstructorInfo[] constructors,
+ 227                      MBeanOperationInfo[] operations,
+ 228                      MBeanNotificationInfo[] notifications,
+ 229                      Descriptor descriptor)
+ 230             throws IllegalArgumentException {
+ 231 
+ 232         this.className = className;
+ 233 
+ 234         this.description = description;
+ 235 
+ 236         if (attributes == null)
+ 237             attributes = MBeanAttributeInfo.NO_ATTRIBUTES;
+ 238         this.attributes = attributes;
+ 239 
+ 240         if (operations == null)
+ 241             operations = MBeanOperationInfo.NO_OPERATIONS;
+ 242         this.operations = operations;
+ 243 
+ 244         if (constructors == null)
+ 245             constructors = MBeanConstructorInfo.NO_CONSTRUCTORS;
+ 246         this.constructors = constructors;
+ 247 
+ 248         if (notifications == null)
+ 249             notifications = MBeanNotificationInfo.NO_NOTIFICATIONS;
+ 250         this.notifications = notifications;
+ 251 
+ 252         if (descriptor == null)
+ 253             descriptor = ImmutableDescriptor.EMPTY_DESCRIPTOR;
+ 254         this.descriptor = descriptor;
+ 255 
+ 256         this.arrayGettersSafe =
+ 257                 arrayGettersSafe(this.getClass(), MBeanInfo.class);
+ 258     }
+ 259 
+ 260     /**
+ 261      * &lt;p&gt;Returns a shallow clone of this instance.
+ 262      * The clone is obtained by simply calling &lt;tt&gt;super.clone()&lt;/tt&gt;,
+ 263      * thus calling the default native shallow cloning mechanism
+ 264      * implemented by &lt;tt&gt;Object.clone()&lt;/tt&gt;.
+ 265      * No deeper cloning of any internal field is made.&lt;/p&gt;
+ 266      *
+ 267      * &lt;p&gt;Since this class is immutable, the clone method is chiefly of
+ 268      * interest to subclasses.&lt;/p&gt;
+ 269      */
+ 270      @Override
+ 271      public Object clone () {
+ 272          try {
+ 273              return super.clone() ;
+ 274          } catch (CloneNotSupportedException e) {
+ 275              // should not happen as this class is cloneable
+ 276              return null;
+ 277          }
+ 278      }
+ 279 
+ 280 
+ 281     /**
+ 282      * Returns the name of the Java class of the MBean described by
+ 283      * this &lt;CODE&gt;MBeanInfo&lt;/CODE&gt;.
+ 284      *
+ 285      * @return the class name.
+ 286      */
+ 287     public String getClassName()  {
+ 288         return className;
+ 289     }
+ 290 
+ 291     /**
+ 292      * Returns a human readable description of the MBean.
+ 293      *
+ 294      * @return the description.
+ 295      */
+ 296     public String getDescription()  {
+ 297         return description;
+ 298     }
+ 299 
+ 300     /**
+ 301      * Returns the list of attributes exposed for management.
+ 302      * Each attribute is described by an &lt;CODE&gt;MBeanAttributeInfo&lt;/CODE&gt; object.
+ 303      *
+ 304      * The returned array is a shallow copy of the internal array,
+ 305      * which means that it is a copy of the internal array of
+ 306      * references to the &lt;CODE&gt;MBeanAttributeInfo&lt;/CODE&gt; objects
+ 307      * but that each referenced &lt;CODE&gt;MBeanAttributeInfo&lt;/CODE&gt; object is not copied.
+ 308      *
+ 309      * @return  An array of &lt;CODE&gt;MBeanAttributeInfo&lt;/CODE&gt; objects.
+ 310      */
+ 311     public MBeanAttributeInfo[] getAttributes()   {
+ 312         MBeanAttributeInfo[] as = nonNullAttributes();
+ 313         if (as.length == 0)
+ 314             return as;
+ 315         else
+ 316             return as.clone();
+ 317     }
+ 318 
+ 319     private MBeanAttributeInfo[] fastGetAttributes() {
+ 320         if (arrayGettersSafe)
+ 321             return nonNullAttributes();
+ 322         else
+ 323             return getAttributes();
+ 324     }
+ 325 
+ 326     /**
+ 327      * Return the value of the attributes field, or an empty array if
+ 328      * the field is null.  This can't happen with a
+ 329      * normally-constructed instance of this class, but can if the
+ 330      * instance was deserialized from another implementation that
+ 331      * allows the field to be null.  It would be simpler if we enforced
+ 332      * the class invariant that these fields cannot be null by writing
+ 333      * a readObject() method, but that would require us to define the
+ 334      * various array fields as non-final, which is annoying because
+ 335      * conceptually they are indeed final.
+ 336      */
+ 337     private MBeanAttributeInfo[] nonNullAttributes() {
+ 338         return (attributes == null) ?
+ 339             MBeanAttributeInfo.NO_ATTRIBUTES : attributes;
+ 340     }
+ 341 
+ 342     /**
+ 343      * Returns the list of operations  of the MBean.
+ 344      * Each operation is described by an &lt;CODE&gt;MBeanOperationInfo&lt;/CODE&gt; object.
+ 345      *
+ 346      * The returned array is a shallow copy of the internal array,
+ 347      * which means that it is a copy of the internal array of
+ 348      * references to the &lt;CODE&gt;MBeanOperationInfo&lt;/CODE&gt; objects
+ 349      * but that each referenced &lt;CODE&gt;MBeanOperationInfo&lt;/CODE&gt; object is not copied.
+ 350      *
+ 351      * @return  An array of &lt;CODE&gt;MBeanOperationInfo&lt;/CODE&gt; objects.
+ 352      */
+ 353     public MBeanOperationInfo[] getOperations()  {
+ 354         MBeanOperationInfo[] os = nonNullOperations();
+ 355         if (os.length == 0)
+ 356             return os;
+ 357         else
+ 358             return os.clone();
+ 359     }
+ 360 
+ 361     private MBeanOperationInfo[] fastGetOperations() {
+ 362         if (arrayGettersSafe)
+ 363             return nonNullOperations();
+ 364         else
+ 365             return getOperations();
+ 366     }
+ 367 
+ 368     private MBeanOperationInfo[] nonNullOperations() {
+ 369         return (operations == null) ?
+ 370             MBeanOperationInfo.NO_OPERATIONS : operations;
+ 371     }
+ 372 
+ 373     /**
+ 374      * &lt;p&gt;Returns the list of the public constructors of the MBean.
+ 375      * Each constructor is described by an
+ 376      * &lt;CODE&gt;MBeanConstructorInfo&lt;/CODE&gt; object.&lt;/p&gt;
+ 377      *
+ 378      * &lt;p&gt;The returned array is a shallow copy of the internal array,
+ 379      * which means that it is a copy of the internal array of
+ 380      * references to the &lt;CODE&gt;MBeanConstructorInfo&lt;/CODE&gt; objects but
+ 381      * that each referenced &lt;CODE&gt;MBeanConstructorInfo&lt;/CODE&gt; object
+ 382      * is not copied.&lt;/p&gt;
+ 383      *
+ 384      * &lt;p&gt;The returned list is not necessarily exhaustive.  That is,
+ 385      * the MBean may have a public constructor that is not in the
+ 386      * list.  In this case, the MBean server can construct another
+ 387      * instance of this MBean's class using that constructor, even
+ 388      * though it is not listed here.&lt;/p&gt;
+ 389      *
+ 390      * @return  An array of &lt;CODE&gt;MBeanConstructorInfo&lt;/CODE&gt; objects.
+ 391      */
+ 392     public MBeanConstructorInfo[] getConstructors()  {
+ 393         MBeanConstructorInfo[] cs = nonNullConstructors();
+ 394         if (cs.length == 0)
+ 395             return cs;
+ 396         else
+ 397             return cs.clone();
+ 398     }
+ 399 
+ 400     private MBeanConstructorInfo[] fastGetConstructors() {
+ 401         if (arrayGettersSafe)
+ 402             return nonNullConstructors();
+ 403         else
+ 404             return getConstructors();
+ 405     }
+ 406 
+ 407     private MBeanConstructorInfo[] nonNullConstructors() {
+ 408         return (constructors == null) ?
+ 409             MBeanConstructorInfo.NO_CONSTRUCTORS : constructors;
+ 410     }
+ 411 
+ 412     /**
+ 413      * Returns the list of the notifications emitted by the MBean.
+ 414      * Each notification is described by an &lt;CODE&gt;MBeanNotificationInfo&lt;/CODE&gt; object.
+ 415      *
+ 416      * The returned array is a shallow copy of the internal array,
+ 417      * which means that it is a copy of the internal array of
+ 418      * references to the &lt;CODE&gt;MBeanNotificationInfo&lt;/CODE&gt; objects
+ 419      * but that each referenced &lt;CODE&gt;MBeanNotificationInfo&lt;/CODE&gt; object is not copied.
+ 420      *
+ 421      * @return  An array of &lt;CODE&gt;MBeanNotificationInfo&lt;/CODE&gt; objects.
+ 422      */
+ 423     public MBeanNotificationInfo[] getNotifications()  {
+ 424         MBeanNotificationInfo[] ns = nonNullNotifications();
+ 425         if (ns.length == 0)
+ 426             return ns;
+ 427         else
+ 428             return ns.clone();
+ 429     }
+ 430 
+ 431     private MBeanNotificationInfo[] fastGetNotifications() {
+ 432         if (arrayGettersSafe)
+ 433             return nonNullNotifications();
+ 434         else
+ 435             return getNotifications();
+ 436     }
+ 437 
+ 438     private MBeanNotificationInfo[] nonNullNotifications() {
+ 439         return (notifications == null) ?
+ 440             MBeanNotificationInfo.NO_NOTIFICATIONS : notifications;
+ 441     }
+ 442 
+ 443     /**
+ 444      * Get the descriptor of this MBeanInfo.  Changing the returned value
+ 445      * will have no affect on the original descriptor.
+ 446      *
+ 447      * @return a descriptor that is either immutable or a copy of the original.
+ 448      *
+ 449      * @since 1.6
+ 450      */
+ 451     public Descriptor getDescriptor() {
+ 452         return (Descriptor) nonNullDescriptor(descriptor).clone();
+ 453     }
+ 454 
+ 455     @Override
+ 456     public String toString() {
+ 457         return
+ 458             getClass().getName() + "[" +
+ 459             "description=" + getDescription() + ", " +
+ 460             "attributes=" + Arrays.asList(fastGetAttributes()) + ", " +
+ 461             "constructors=" + Arrays.asList(fastGetConstructors()) + ", " +
+ 462             "operations=" + Arrays.asList(fastGetOperations()) + ", " +
+ 463             "notifications=" + Arrays.asList(fastGetNotifications()) + ", " +
+ 464             "descriptor=" + getDescriptor() +
+ 465             "]";
+ 466     }
+ 467 
+ 468     /**
+ 469      * &lt;p&gt;Compare this MBeanInfo to another.  Two MBeanInfo objects
+ 470      * are equal if and only if they return equal values for {@link
+ 471      * #getClassName()}, for {@link #getDescription()}, and for
+ 472      * {@link #getDescriptor()}, and the
+ 473      * arrays returned by the two objects for {@link
+ 474      * #getAttributes()}, {@link #getOperations()}, {@link
+ 475      * #getConstructors()}, and {@link #getNotifications()} are
+ 476      * pairwise equal.  Here "equal" means {@link
+ 477      * Object#equals(Object)}, not identity.&lt;/p&gt;
+ 478      *
+ 479      * &lt;p&gt;If two MBeanInfo objects return the same values in one of
+ 480      * their arrays but in a different order then they are not equal.&lt;/p&gt;
+ 481      *
+ 482      * @param o the object to compare to.
+ 483      *
+ 484      * @return true if and only if &lt;code&gt;o&lt;/code&gt; is an MBeanInfo that is equal
+ 485      * to this one according to the rules above.
+ 486      */
+ 487     @Override
+ 488     public boolean equals(Object o) {
+ 489         if (o == this)
+ 490             return true;
+ 491         if (!(o instanceof MBeanInfo))
+ 492             return false;
+ 493         MBeanInfo p = (MBeanInfo) o;
+ 494         if (!isEqual(getClassName(),  p.getClassName()) ||
+ 495                 !isEqual(getDescription(), p.getDescription()) ||
+ 496                 !getDescriptor().equals(p.getDescriptor())) {
+ 497             return false;
+ 498         }
+ 499 
+ 500         return
+ 501             (Arrays.equals(p.fastGetAttributes(), fastGetAttributes()) &amp;&amp;
+ 502              Arrays.equals(p.fastGetOperations(), fastGetOperations()) &amp;&amp;
+ 503              Arrays.equals(p.fastGetConstructors(), fastGetConstructors()) &amp;&amp;
+ 504              Arrays.equals(p.fastGetNotifications(), fastGetNotifications()));
+ 505     }
+ 506 
+ 507     @Override
+ 508     public int hashCode() {
+ 509         /* Since computing the hashCode is quite expensive, we cache it.
+ 510            If by some terrible misfortune the computed value is 0, the
+ 511            caching won't work and we will recompute it every time.
+ 512 
+ 513            We don't bother synchronizing, because, at worst, n different
+ 514            threads will compute the same hashCode at the same time.  */
+ 515         if (hashCode != 0)
+ 516             return hashCode;
+ 517 
+ 518         hashCode =
+ 519             getClassName().hashCode() ^
+ 520             getDescriptor().hashCode() ^
+ 521             arrayHashCode(fastGetAttributes()) ^
+ 522             arrayHashCode(fastGetOperations()) ^
+ 523             arrayHashCode(fastGetConstructors()) ^
+ 524             arrayHashCode(fastGetNotifications());
+ 525 
+ 526         return hashCode;
+ 527     }
+ 528 
+ 529     private static int arrayHashCode(Object[] array) {
+ 530         int hash = 0;
+ 531         for (int i = 0; i &lt; array.length; i++)
+ 532             hash ^= array[i].hashCode();
+ 533         return hash;
+ 534     }
+ 535 
+ 536     /**
+ 537      * Cached results of previous calls to arrayGettersSafe.  This is
+ 538      * a WeakHashMap so that we don't prevent a class from being
+ 539      * garbage collected just because we know whether it's immutable.
+ 540      */
+ 541     private static final Map&lt;Class&lt;?&gt;, Boolean&gt; arrayGettersSafeMap =
+ 542         new WeakHashMap&lt;Class&lt;?&gt;, Boolean&gt;();
+ 543 
+ 544     /**
+ 545      * Return true if &lt;code&gt;subclass&lt;/code&gt; is known to preserve the
+ 546      * immutability of &lt;code&gt;immutableClass&lt;/code&gt;.  The class
+ 547      * &lt;code&gt;immutableClass&lt;/code&gt; is a reference class that is known
+ 548      * to be immutable.  The subclass &lt;code&gt;subclass&lt;/code&gt; is
+ 549      * considered immutable if it does not override any public method
+ 550      * of &lt;code&gt;immutableClass&lt;/code&gt; whose name begins with "get".
+ 551      * This is obviously not an infallible test for immutability,
+ 552      * but it works for the public interfaces of the MBean*Info classes.
+ 553     */
+ 554     static boolean arrayGettersSafe(Class&lt;?&gt; subclass, Class&lt;?&gt; immutableClass) {
+ 555         if (subclass == immutableClass)
+ 556             return true;
+ 557         synchronized (arrayGettersSafeMap) {
+ 558             Boolean safe = arrayGettersSafeMap.get(subclass);
+ 559             if (safe == null) {
+ 560                 try {
+ 561                     ArrayGettersSafeAction action =
+ 562                         new ArrayGettersSafeAction(subclass, immutableClass);
+ 563                     safe = AccessController.doPrivileged(action);
+ 564                 } catch (Exception e) { // e.g. SecurityException
+ 565                     /* We don't know, so we assume it isn't.  */
+ 566                     safe = false;
+ 567                 }
+ 568                 arrayGettersSafeMap.put(subclass, safe);
+ 569             }
+ 570             return safe;
+ 571         }
+ 572     }
+ 573 
+ 574     /*
+ 575      * The PrivilegedAction stuff is probably overkill.  We can be
+ 576      * pretty sure the caller does have the required privileges -- a
+ 577      * JMX user that can't do reflection can't even use Standard
+ 578      * MBeans!  But there's probably a performance gain by not having
+ 579      * to check the whole call stack.
+ 580      */
+ 581     private static class ArrayGettersSafeAction
+ 582             implements PrivilegedAction&lt;Boolean&gt; {
+ 583 
+ 584         private final Class&lt;?&gt; subclass;
+ 585         private final Class&lt;?&gt; immutableClass;
+ 586 
+ 587         ArrayGettersSafeAction(Class&lt;?&gt; subclass, Class&lt;?&gt; immutableClass) {
+ 588             this.subclass = subclass;
+ 589             this.immutableClass = immutableClass;
+ 590         }
+ 591 
+ 592         public Boolean run() {
+ 593             Method[] methods = immutableClass.getMethods();
+ 594             for (int i = 0; i &lt; methods.length; i++) {
+ 595                 Method method = methods[i];
+ 596                 String methodName = method.getName();
+ 597                 if (methodName.startsWith("get") &amp;&amp;
+ 598                         method.getParameterTypes().length == 0 &amp;&amp;
+ 599                         method.getReturnType().isArray()) {
+ 600                     try {
+ 601                         Method submethod =
+ 602                             subclass.getMethod(methodName);
+ 603                         if (!submethod.equals(method))
+ 604                             return false;
+ 605                     } catch (NoSuchMethodException e) {
+ 606                         return false;
+ 607                     }
+ 608                 }
+ 609             }
+ 610             return true;
+ 611         }
+ 612     }
+ 613 
+ 614     private static boolean isEqual(String s1, String s2) {
+ 615         boolean ret;
+ 616 
+ 617         if (s1 == null) {
+ 618             ret = (s2 == null);
+ 619         } else {
+ 620             ret = s1.equals(s2);
+ 621         }
+ 622 
+ 623         return ret;
+ 624     }
+ 625 
+ 626     /**
+ 627      * Serializes an {@link MBeanInfo} to an {@link ObjectOutputStream}.
+ 628      * @serialData
+ 629      * For compatibility reasons, an object of this class is serialized as follows.
+ 630      * &lt;ul&gt;
+ 631      * The method {@link ObjectOutputStream#defaultWriteObject defaultWriteObject()}
+ 632      * is called first to serialize the object except the field {@code descriptor}
+ 633      * which is declared as transient. The field {@code descriptor} is serialized
+ 634      * as follows:
+ 635      *     &lt;ul&gt;
+ 636      *     &lt;li&gt; If {@code descriptor} is an instance of the class
+ 637      *        {@link ImmutableDescriptor}, the method {@link ObjectOutputStream#write
+ 638      *        write(int val)} is called to write a byte with the value {@code 1},
+ 639      *        then the method {@link ObjectOutputStream#writeObject writeObject(Object obj)}
+ 640      *        is called twice to serialize the field names and the field values of the
+ 641      *        {@code descriptor}, respectively as a {@code String[]} and an
+ 642      *        {@code Object[]};&lt;/li&gt;
+ 643      *     &lt;li&gt; Otherwise, the method {@link ObjectOutputStream#write write(int val)}
+ 644      *        is called to write a byte with the value {@code 0}, then the method
+ 645      *        {@link ObjectOutputStream#writeObject writeObject(Object obj)} is called
+ 646      *        to serialize the field {@code descriptor} directly.
+ 647      *     &lt;/ul&gt;
+ 648      * &lt;/ul&gt;
+ 649      * @since 1.6
+ 650      */
+ 651     private void writeObject(ObjectOutputStream out) throws IOException {
+ 652         out.defaultWriteObject();
+ 653 
+ 654         if (descriptor.getClass() == ImmutableDescriptor.class) {
+ 655             out.write(1);
+ 656 
+ 657             final String[] names = descriptor.getFieldNames();
+ 658 
+ 659             out.writeObject(names);
+ 660             out.writeObject(descriptor.getFieldValues(names));
+ 661         } else {
+ 662             out.write(0);
+ 663 
+ 664             out.writeObject(descriptor);
+ 665         }
+ 666     }
+ 667 
+ 668     /**
+ 669      * Deserializes an {@link MBeanInfo} from an {@link ObjectInputStream}.
+ 670      * @serialData
+ 671      * For compatibility reasons, an object of this class is deserialized as follows.
+ 672      * &lt;ul&gt;
+ 673      * The method {@link ObjectInputStream#defaultReadObject defaultReadObject()}
+ 674      * is called first to deserialize the object except the field
+ 675      * {@code descriptor}, which is not serialized in the default way. Then the method
+ 676      * {@link ObjectInputStream#read read()} is called to read a byte, the field
+ 677      * {@code descriptor} is deserialized according to the value of the byte value:
+ 678      *    &lt;ul&gt;
+ 679      *    &lt;li&gt;1. The method {@link ObjectInputStream#readObject readObject()}
+ 680      *       is called twice to obtain the field names (a {@code String[]}) and
+ 681      *       the field values (a {@code Object[]}) of the {@code descriptor}.
+ 682      *       The two obtained values then are used to construct
+ 683      *       an {@link ImmutableDescriptor} instance for the field
+ 684      *       {@code descriptor};&lt;/li&gt;
+ 685      *    &lt;li&gt;0. The value for the field {@code descriptor} is obtained directly
+ 686      *       by calling the method {@link ObjectInputStream#readObject readObject()}.
+ 687      *       If the obtained value is null, the field {@code descriptor} is set to
+ 688      *       {@link ImmutableDescriptor#EMPTY_DESCRIPTOR EMPTY_DESCRIPTOR};&lt;/li&gt;
+ 689      *    &lt;li&gt;-1. This means that there is no byte to read and that the object is from
+ 690      *       an earlier version of the JMX API. The field {@code descriptor} is set to
+ 691      *       {@link ImmutableDescriptor#EMPTY_DESCRIPTOR EMPTY_DESCRIPTOR}.&lt;/li&gt;
+ 692      *    &lt;li&gt;Any other value. A {@link StreamCorruptedException} is thrown.&lt;/li&gt;
+ 693      *    &lt;/ul&gt;
+ 694      * &lt;/ul&gt;
+ 695      * @since 1.6
+ 696      */
+ 697 
+ 698     private void readObject(ObjectInputStream in)
+ 699         throws IOException, ClassNotFoundException {
+ 700 
+ 701         in.defaultReadObject();
+ 702 
+ 703         switch (in.read()) {
+ 704         case 1:
+ 705             final String[] names = (String[])in.readObject();
+ 706 
+<a name="1" id="anc1"></a><span class="changed"> 707             if (names.length == 0) {</span>
+<span class="changed"> 708                 descriptor = ImmutableDescriptor.EMPTY_DESCRIPTOR;</span>
+<span class="changed"> 709             } else {</span>
+<span class="changed"> 710                 final Object[] values = (Object[])in.readObject();</span>
+<span class="changed"> 711                 descriptor = new ImmutableDescriptor(names, values);</span>
+<span class="changed"> 712             }</span>
+ 713 
+ 714             break;
+ 715         case 0:
+ 716             descriptor = (Descriptor)in.readObject();
+ 717 
+ 718             if (descriptor == null) {
+ 719                 descriptor = ImmutableDescriptor.EMPTY_DESCRIPTOR;
+ 720             }
+ 721 
+ 722             break;
+ 723         case -1: // from an earlier version of the JMX API
+ 724             descriptor = ImmutableDescriptor.EMPTY_DESCRIPTOR;
+ 725 
+ 726             break;
+ 727         default:
+ 728             throw new StreamCorruptedException("Got unexpected byte.");
+ 729         }
+ 730     }
+ 731 }
+<a name="2" id="anc2"></a><b style="font-size: large; color: red">--- EOF ---</b>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</pre><form name="eof"><input name="value" value="2" type="hidden" /></form></body></html>

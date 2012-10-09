@@ -1,0 +1,348 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>Old src/share/classes/javax/management/MBeanFeatureInfo.java</title>
+<body id="SUNWwebrev">
+<pre>
+   1 /*
+   2  * Copyright (c) 1999, 2006, Oracle and/or its affiliates. All rights reserved.
+   3  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+   4  *
+   5  * This code is free software; you can redistribute it and/or modify it
+   6  * under the terms of the GNU General Public License version 2 only, as
+   7  * published by the Free Software Foundation.  Oracle designates this
+   8  * particular file as subject to the "Classpath" exception as provided
+   9  * by Oracle in the LICENSE file that accompanied this code.
+  10  *
+  11  * This code is distributed in the hope that it will be useful, but WITHOUT
+  12  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+  13  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+  14  * version 2 for more details (a copy is included in the LICENSE file that
+  15  * accompanied this code).
+  16  *
+  17  * You should have received a copy of the GNU General Public License version
+  18  * 2 along with this work; if not, write to the Free Software Foundation,
+  19  * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+  20  *
+  21  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+  22  * or visit www.oracle.com if you need additional information or have any
+  23  * questions.
+  24  */
+  25 
+  26 package javax.management;
+  27 
+  28 import java.io.IOException;
+  29 import java.io.ObjectInputStream;
+  30 import java.io.ObjectOutputStream;
+  31 import java.io.Serializable;
+  32 import java.io.StreamCorruptedException;
+  33 
+  34 /**
+  35  * &lt;p&gt;Provides general information for an MBean descriptor object.
+  36  * The feature described can be an attribute, an operation, a
+  37  * parameter, or a notification.  Instances of this class are
+  38  * immutable.  Subclasses may be mutable but this is not
+  39  * recommended.&lt;/p&gt;
+  40  *
+  41  * @since 1.5
+  42  */
+  43 public class MBeanFeatureInfo implements Serializable, DescriptorRead {
+  44 
+  45 
+  46     /* Serial version */
+  47     static final long serialVersionUID = 3952882688968447265L;
+  48 
+  49     /**
+  50      * The name of the feature.  It is recommended that subclasses call
+  51      * {@link #getName} rather than reading this field, and that they
+  52      * not change it.
+  53      *
+  54      * @serial The name of the feature.
+  55      */
+  56     protected String name;
+  57 
+  58     /**
+  59      * The human-readable description of the feature.  It is
+  60      * recommended that subclasses call {@link #getDescription} rather
+  61      * than reading this field, and that they not change it.
+  62      *
+  63      * @serial The human-readable description of the feature.
+  64      */
+  65     protected String description;
+  66 
+  67     /**
+  68      * @serial The Descriptor for this MBeanFeatureInfo.  This field
+  69      * can be null, which is equivalent to an empty Descriptor.
+  70      */
+  71     private transient Descriptor descriptor;
+  72 
+  73 
+  74     /**
+  75      * Constructs an &lt;CODE&gt;MBeanFeatureInfo&lt;/CODE&gt; object.  This
+  76      * constructor is equivalent to {@code MBeanFeatureInfo(name,
+  77      * description, (Descriptor) null}.
+  78      *
+  79      * @param name The name of the feature.
+  80      * @param description A human readable description of the feature.
+  81      */
+  82     public MBeanFeatureInfo(String name, String description) {
+  83         this(name, description, null);
+  84     }
+  85 
+  86     /**
+  87      * Constructs an &lt;CODE&gt;MBeanFeatureInfo&lt;/CODE&gt; object.
+  88      *
+  89      * @param name The name of the feature.
+  90      * @param description A human readable description of the feature.
+  91      * @param descriptor The descriptor for the feature.  This may be null
+  92      * which is equivalent to an empty descriptor.
+  93      *
+  94      * @since 1.6
+  95      */
+  96     public MBeanFeatureInfo(String name, String description,
+  97                             Descriptor descriptor) {
+  98         this.name = name;
+  99         this.description = description;
+ 100         this.descriptor = descriptor;
+ 101     }
+ 102 
+ 103     /**
+ 104      * Returns the name of the feature.
+ 105      *
+ 106      * @return the name of the feature.
+ 107      */
+ 108     public String getName() {
+ 109         return name;
+ 110     }
+ 111 
+ 112     /**
+ 113      * Returns the human-readable description of the feature.
+ 114      *
+ 115      * @return the human-readable description of the feature.
+ 116      */
+ 117     public String getDescription() {
+ 118         return description;
+ 119     }
+ 120 
+ 121     /**
+ 122      * Returns the descriptor for the feature.  Changing the returned value
+ 123      * will have no affect on the original descriptor.
+ 124      *
+ 125      * @return a descriptor that is either immutable or a copy of the original.
+ 126      *
+ 127      * @since 1.6
+ 128      */
+ 129     public Descriptor getDescriptor() {
+ 130         return (Descriptor) ImmutableDescriptor.nonNullDescriptor(descriptor).clone();
+ 131     }
+ 132 
+ 133     /**
+ 134      * Compare this MBeanFeatureInfo to another.
+ 135      *
+ 136      * @param o the object to compare to.
+ 137      *
+ 138      * @return true if and only if &lt;code&gt;o&lt;/code&gt; is an MBeanFeatureInfo such
+ 139      * that its {@link #getName()}, {@link #getDescription()}, and
+ 140      * {@link #getDescriptor()}
+ 141      * values are equal (not necessarily identical) to those of this
+ 142      * MBeanFeatureInfo.
+ 143      */
+ 144     public boolean equals(Object o) {
+ 145         if (o == this)
+ 146             return true;
+ 147         if (!(o instanceof MBeanFeatureInfo))
+ 148             return false;
+ 149         MBeanFeatureInfo p = (MBeanFeatureInfo) o;
+ 150         return (p.getName().equals(getName()) &amp;&amp;
+ 151                 p.getDescription().equals(getDescription()) &amp;&amp;
+ 152                 p.getDescriptor().equals(getDescriptor()));
+ 153     }
+ 154 
+ 155     public int hashCode() {
+ 156         return getName().hashCode() ^ getDescription().hashCode() ^
+ 157                getDescriptor().hashCode();
+ 158     }
+ 159 
+ 160     /**
+ 161      * Serializes an {@link MBeanFeatureInfo} to an {@link ObjectOutputStream}.
+ 162      * @serialData
+ 163      * For compatibility reasons, an object of this class is serialized as follows.
+ 164      * &lt;ul&gt;
+ 165      * The method {@link ObjectOutputStream#defaultWriteObject defaultWriteObject()}
+ 166      * is called first to serialize the object except the field {@code descriptor}
+ 167      * which is declared as transient. The field {@code descriptor} is serialized
+ 168      * as follows:
+ 169      *     &lt;ul&gt;
+ 170      *     &lt;li&gt;If {@code descriptor} is an instance of the class
+ 171      *        {@link ImmutableDescriptor}, the method {@link ObjectOutputStream#write
+ 172      *        write(int val)} is called to write a byte with the value {@code 1},
+ 173      *        then the method {@link ObjectOutputStream#writeObject writeObject(Object obj)}
+ 174      *        is called twice to serialize the field names and the field values of the
+ 175      *        {@code descriptor}, respectively as a {@code String[]} and an
+ 176      *        {@code Object[]};&lt;/li&gt;
+ 177      *     &lt;li&gt;Otherwise, the method {@link ObjectOutputStream#write write(int val)}
+ 178      * is called to write a byte with the value {@code 0}, then the method
+ 179      * {@link ObjectOutputStream#writeObject writeObject(Object obj)} is called
+ 180      * to serialize directly the field {@code descriptor}.
+ 181      *     &lt;/ul&gt;
+ 182      * &lt;/ul&gt;
+ 183      * @since 1.6
+ 184      */
+ 185     private void writeObject(ObjectOutputStream out) throws IOException {
+ 186         out.defaultWriteObject();
+ 187 
+ 188         if (descriptor != null &amp;&amp;
+ 189             descriptor.getClass() == ImmutableDescriptor.class) {
+ 190 
+ 191             out.write(1);
+ 192 
+ 193             final String[] names = descriptor.getFieldNames();
+ 194 
+ 195             out.writeObject(names);
+ 196             out.writeObject(descriptor.getFieldValues(names));
+ 197         } else {
+ 198             out.write(0);
+ 199 
+ 200             out.writeObject(descriptor);
+ 201         }
+ 202     }
+ 203 
+ 204     /**
+ 205      * Deserializes an {@link MBeanFeatureInfo} from an {@link ObjectInputStream}.
+ 206      * @serialData
+ 207      * For compatibility reasons, an object of this class is deserialized as follows.
+ 208      * &lt;ul&gt;
+ 209      * The method {@link ObjectInputStream#defaultReadObject defaultReadObject()}
+ 210      * is called first to deserialize the object except the field
+ 211      * {@code descriptor}, which is not serialized in the default way. Then the method
+ 212      * {@link ObjectInputStream#read read()} is called to read a byte, the field
+ 213      * {@code descriptor} is deserialized according to the value of the byte value:
+ 214      *    &lt;ul&gt;
+ 215      *    &lt;li&gt;1. The method {@link ObjectInputStream#readObject readObject()}
+ 216      *       is called twice to obtain the field names (a {@code String[]}) and
+ 217      *       the field values (a {@code Object[]}) of the {@code descriptor}.
+ 218      *       The two obtained values then are used to construct
+ 219      *       an {@link ImmutableDescriptor} instance for the field
+ 220      *       {@code descriptor};&lt;/li&gt;
+ 221      *    &lt;li&gt;0. The value for the field {@code descriptor} is obtained directly
+ 222      *       by calling the method {@link ObjectInputStream#readObject readObject()}.
+ 223      *       If the obtained value is null, the field {@code descriptor} is set to
+ 224      *       {@link ImmutableDescriptor#EMPTY_DESCRIPTOR EMPTY_DESCRIPTOR};&lt;/li&gt;
+ 225      *    &lt;li&gt;-1. This means that there is no byte to read and that the object is from
+ 226      *       an earlier version of the JMX API. The field {@code descriptor} is set
+ 227      *       to {@link ImmutableDescriptor#EMPTY_DESCRIPTOR EMPTY_DESCRIPTOR}&lt;/li&gt;
+ 228      *    &lt;li&gt;Any other value. A {@link StreamCorruptedException} is thrown.&lt;/li&gt;
+ 229      *    &lt;/ul&gt;
+ 230      * &lt;/ul&gt;
+ 231      * @since 1.6
+ 232      */
+ 233     private void readObject(ObjectInputStream in)
+ 234         throws IOException, ClassNotFoundException {
+ 235 
+ 236         in.defaultReadObject();
+ 237 
+ 238         switch (in.read()) {
+ 239         case 1:
+ 240             final String[] names = (String[])in.readObject();
+ 241 
+ 242             if (names.length == 0) {
+ 243                 descriptor = ImmutableDescriptor.EMPTY_DESCRIPTOR;
+ 244             } else {
+ 245                 final Object[] values = (Object[])in.readObject();
+ 246                 descriptor = new ImmutableDescriptor(names, values);
+ 247             }
+ 248 
+ 249             break;
+ 250         case 0:
+ 251             descriptor = (Descriptor)in.readObject();
+ 252 
+ 253             if (descriptor == null) {
+ 254                 descriptor = ImmutableDescriptor.EMPTY_DESCRIPTOR;
+ 255             }
+ 256 
+ 257             break;
+ 258         case -1: // from an earlier version of the JMX API
+ 259             descriptor = ImmutableDescriptor.EMPTY_DESCRIPTOR;
+ 260 
+ 261             break;
+ 262         default:
+ 263             throw new StreamCorruptedException("Got unexpected byte.");
+ 264         }
+ 265     }
+ 266 }
+</pre></body></html>

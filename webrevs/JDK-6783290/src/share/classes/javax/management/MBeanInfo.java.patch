@@ -1,0 +1,19 @@
+--- old/src/share/classes/javax/management/MBeanInfo.java	2012-10-09 10:53:38.899473679 +0200
++++ new/src/share/classes/javax/management/MBeanInfo.java	2012-10-09 10:53:38.743473682 +0200
+@@ -704,12 +704,10 @@
+         case 1:
+             final String[] names = (String[])in.readObject();
+ 
+-            if (names.length == 0) {
+-                descriptor = ImmutableDescriptor.EMPTY_DESCRIPTOR;
+-            } else {
+-                final Object[] values = (Object[])in.readObject();
+-                descriptor = new ImmutableDescriptor(names, values);
+-            }
++            final Object[] values = (Object[]) in.readObject();
++            descriptor = (names.length == 0) ?
++                ImmutableDescriptor.EMPTY_DESCRIPTOR :
++                new ImmutableDescriptor(names, values);
+ 
+             break;
+         case 0:
