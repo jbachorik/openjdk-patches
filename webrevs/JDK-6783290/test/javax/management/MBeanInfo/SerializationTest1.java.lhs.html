@@ -1,0 +1,281 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+    <script type="text/javascript" src="../../../../ancnav.js"></script>
+    </head>
+    <body id="SUNWwebrev" onkeypress="keypress(event);">
+    <a name="0"></a>
+    <pre>rev 5921 : [mq]: JDK-<a href="http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=6783290">6783290</a></pre><hr></hr>
+<pre>
+   1 /*
+   2  * Copyright (c) 2005, Oracle and/or its affiliates. All rights reserved.
+   3  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+   4  *
+   5  * This code is free software; you can redistribute it and/or modify it
+   6  * under the terms of the GNU General Public License version 2 only, as
+   7  * published by the Free Software Foundation.
+   8  *
+   9  * This code is distributed in the hope that it will be useful, but WITHOUT
+  10  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+  11  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+  12  * version 2 for more details (a copy is included in the LICENSE file that
+  13  * accompanied this code).
+  14  *
+  15  * You should have received a copy of the GNU General Public License version
+  16  * 2 along with this work; if not, write to the Free Software Foundation,
+  17  * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+  18  *
+  19  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+  20  * or visit www.oracle.com if you need additional information or have any
+  21  * questions.
+  22  */
+  23 
+  24 /*
+  25  * @test
+<a name="1" id="anc1"></a><span class="changed">  26  * @bug 6288100</span>
+<span class="changed">  27  * @summary Test the new serialization/deserialization methods.</span>
+<span class="changed">  28  * @author Shanliang JIANG</span>
+<span class="changed">  29  * @run clean SerializationTest</span>
+<span class="changed">  30  * @run build SerializationTest</span>
+<span class="changed">  31  * @run main SerializationTest</span>
+  32  */
+  33 
+  34 import java.io.*;
+  35 import javax.management.*;
+  36 
+<a name="2" id="anc2"></a><span class="changed">  37 public class SerializationTest {</span>
+  38     public static void main(String[] args) throws Exception {
+<a name="3" id="anc3"></a><span class="removed">  39         MBeanFeatureInfo mfi1 = new MBeanFeatureInfo("", "", null);</span>
+<span class="removed">  40         test(mfi1);</span>
+<span class="removed">  41 </span>
+<span class="removed">  42         MBeanFeatureInfo mfi2 = new MBeanFeatureInfo("",</span>
+<span class="removed">  43                                                      "",</span>
+<span class="removed">  44                                                      ImmutableDescriptor.EMPTY_DESCRIPTOR);</span>
+<span class="removed">  45         test(mfi2);</span>
+<span class="removed">  46 </span>
+<span class="removed">  47         MBeanFeatureInfo mfi3 = new MBeanFeatureInfo("", "",</span>
+<span class="removed">  48                                      new ImmutableDescriptor(new String[] {"hi"},</span>
+<span class="removed">  49                                                              new Object[] {"ha"}));</span>
+<span class="removed">  50         test(mfi3);</span>
+<span class="removed">  51 </span>
+  52         MBeanInfo mi1 = new MBeanInfo("",
+  53                                       "",
+  54                                       new MBeanAttributeInfo[]{},
+  55                                       new MBeanConstructorInfo[]{},
+  56                                       new MBeanOperationInfo[]{},
+  57                                       new MBeanNotificationInfo[]{},
+<a name="4" id="anc4"></a><span class="changed">  58                                       null);</span>
+<span class="changed">  59 </span>
+  60 
+  61         test(mi1);
+  62 
+<a name="5" id="anc5"></a><span class="changed">  63         MBeanInfo mi2 = new MBeanInfo("",</span>
+  64                                       "",
+<a name="6" id="anc6"></a><span class="removed">  65                                       new MBeanAttributeInfo[]{},</span>
+<span class="removed">  66                                       new MBeanConstructorInfo[]{},</span>
+<span class="removed">  67                                       new MBeanOperationInfo[]{},</span>
+<span class="removed">  68                                       new MBeanNotificationInfo[]{},</span>
+  69                                       ImmutableDescriptor.EMPTY_DESCRIPTOR);
+  70 
+<a name="7" id="anc7"></a><span class="changed">  71 </span>
+<span class="changed">  72         test(mi2);</span>
+<span class="changed">  73 </span>
+<span class="changed">  74         MBeanInfo mi3 = new MBeanInfo("",</span>
+<span class="changed">  75                                       "",</span>
+<span class="changed">  76                                       new MBeanAttributeInfo[]{},</span>
+<span class="changed">  77                                       new MBeanConstructorInfo[]{},</span>
+<span class="changed">  78                                       new MBeanOperationInfo[]{},</span>
+<span class="changed">  79                                       new MBeanNotificationInfo[]{},</span>
+<span class="changed">  80                                       new ImmutableDescriptor(new String[] {"hi"},</span>
+<span class="changed">  81                                                              new Object[] {"ha"}));</span>
+<span class="changed">  82 </span>
+<span class="changed">  83 </span>
+<span class="changed">  84         test(mi3);</span>
+<span class="changed">  85 </span>
+<span class="changed">  86 </span>
+  87     }
+  88 
+  89     public static void test(Object obj) throws Exception {
+  90         ByteArrayOutputStream baos = new ByteArrayOutputStream();
+  91         ObjectOutputStream oos = new ObjectOutputStream(baos);
+  92         oos.writeObject(obj);
+  93 
+<a name="8" id="anc8"></a>
+  94         ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+<a name="9" id="anc9"></a><span class="changed">  95         ObjectInputStream ois = new ObjectInputStream(bais);</span>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  96         Object newObj = ois.readObject();
+  97 
+<a name="10" id="anc10"></a><span class="changed">  98         if (!obj.equals(newObj)) {</span>
+<span class="changed">  99             throw new RuntimeException("Serialization/deserialization failed.");</span>
+ 100         }
+ 101     }
+ 102 }
+<a name="11" id="anc11"></a><b style="font-size: large; color: red">--- EOF ---</b>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</pre><form name="eof"><input name="value" value="11" type="hidden" /></form></body></html>

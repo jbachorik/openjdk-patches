@@ -1,5 +1,5 @@
---- old/src/share/classes/javax/management/MBeanInfo.java	2012-10-09 10:53:38.899473679 +0200
-+++ new/src/share/classes/javax/management/MBeanInfo.java	2012-10-09 10:53:38.743473682 +0200
+--- old/src/share/classes/javax/management/MBeanInfo.java	2012-10-10 10:19:37.798599025 +0200
++++ new/src/share/classes/javax/management/MBeanInfo.java	2012-10-10 10:19:37.654599026 +0200
 @@ -704,12 +704,10 @@
          case 1:
              final String[] names = (String[])in.readObject();
