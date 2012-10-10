@@ -1,0 +1,69 @@
+--- old/src/share/classes/javax/management/timer/Timer.java	2012-10-10 16:06:16.354229459 +0200
++++ new/src/share/classes/javax/management/timer/Timer.java	2012-10-10 16:06:16.198229462 +0200
+@@ -28,12 +28,11 @@
+ import static com.sun.jmx.defaults.JmxProperties.TIMER_LOGGER;
+ import java.util.ArrayList;
+ import java.util.Date;
+-import java.util.Hashtable;
+-import java.util.Iterator;
+ import java.util.Map;
+ import java.util.Set;
+ import java.util.TreeSet;
+ import java.util.Vector;
++import java.util.concurrent.ConcurrentHashMap;
+ import java.util.logging.Level;
+ 
+ // jmx imports
+@@ -129,7 +128,7 @@
+      * with the associated date, period and number of occurrences.
+      */
+     private Map<Integer,Object[]> timerTable =
+-        new Hashtable<Integer,Object[]>();
++        new ConcurrentHashMap<>();
+ 
+     /**
+      * Past notifications sending on/off flag value.
+@@ -163,7 +162,7 @@
+      * The notification counter ID.
+      * Used to keep the max key value inserted into the timer table.
+      */
+-    private int counterID = 0;
++    volatile private int counterID = 0;
+ 
+     private java.util.Timer timer;
+ 
+@@ -1176,14 +1175,13 @@
+      */
+     @SuppressWarnings("deprecation")
+     void notifyAlarmClock(TimerAlarmClockNotification notification) {
+-
+         TimerNotification timerNotification = null;
+         Date timerDate = null;
+-
++        
+         // Retrieve the timer notification associated to the alarm-clock.
+         //
+         TimerAlarmClock alarmClock = (TimerAlarmClock)notification.getSource();
+-
++        
+         for (Object[] obj : timerTable.values()) {
+             if (obj[ALARM_CLOCK_INDEX] == alarmClock) {
+                 timerNotification = (TimerNotification)obj[TIMER_NOTIF_INDEX];
+@@ -1191,7 +1189,7 @@
+                 break;
+             }
+         }
+-
++        
+         // Notify the timer.
+         //
+         sendNotification(timerDate, timerNotification);
+@@ -1199,7 +1197,7 @@
+         // Update the notification and the TimerAlarmClock timeout.
+         //
+         updateTimerTable(timerNotification.getNotificationID());
+-    }
++        }
+ 
+     /**
+      * This method is used by the timer MBean to update and send a timer

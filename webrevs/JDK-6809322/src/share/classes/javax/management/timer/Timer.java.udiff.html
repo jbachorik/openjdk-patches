@@ -1,0 +1,155 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>jdk Udiff src/share/classes/javax/management/timer/Timer.java</title>
+
+<style type="text/css" media="screen">
+span.new {
+    color: blue;
+    font-weight: normal;
+}
+</style>
+
+</head>
+<body id="SUNWwebrev">
+<h2>src/share/classes/javax/management/timer/Timer.java</h2>
+        <a class="print" href="javascript:print()">Print this page</a>
+<pre>rev 5922 : [mq]: JDK-<a href="http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=6809322">6809322</a></pre>
+        <pre>
+</pre><hr /><pre>
+<span class="newmarker">@@ -26,16 +26,15 @@</span>
+ package javax.management.timer;
+ 
+ import static com.sun.jmx.defaults.JmxProperties.TIMER_LOGGER;
+ import java.util.ArrayList;
+ import java.util.Date;
+<span class="removed">-import java.util.Hashtable;</span>
+<span class="removed">-import java.util.Iterator;</span>
+ import java.util.Map;
+ import java.util.Set;
+ import java.util.TreeSet;
+ import java.util.Vector;
+<span class="new">+import java.util.concurrent.ConcurrentHashMap;</span>
+ import java.util.logging.Level;
+ 
+ // jmx imports
+ //
+ import javax.management.InstanceNotFoundException;
+</pre><hr /><pre>
+<span class="newmarker">@@ -127,11 +126,11 @@</span>
+     /**
+      * Table containing all the timer notifications of this timer,
+      * with the associated date, period and number of occurrences.
+      */
+     private Map&lt;Integer,Object[]&gt; timerTable =
+<span class="removed">-        new Hashtable&lt;Integer,Object[]&gt;();</span>
+<span class="new">+        new ConcurrentHashMap&lt;&gt;();</span>
+ 
+     /**
+      * Past notifications sending on/off flag value.
+      * This attribute is used to specify if the timer has to send past notifications after start.
+      * &lt;BR&gt;The default value is set to &lt;CODE&gt;false&lt;/CODE&gt;.
+</pre><hr /><pre>
+<span class="newmarker">@@ -161,11 +160,11 @@</span>
+ 
+     /**
+      * The notification counter ID.
+      * Used to keep the max key value inserted into the timer table.
+      */
+<span class="removed">-    private int counterID = 0;</span>
+<span class="new">+    volatile private int counterID = 0;</span>
+ 
+     private java.util.Timer timer;
+ 
+     /*
+      * ------------------------------------------
+</pre><hr /><pre>
+<span class="newmarker">@@ -1174,11 +1173,10 @@</span>
+      *
+      * @param notification The TimerAlarmClock notification.
+      */
+     @SuppressWarnings("deprecation")
+     void notifyAlarmClock(TimerAlarmClockNotification notification) {
+<span class="removed">-</span>
+         TimerNotification timerNotification = null;
+         Date timerDate = null;
+ 
+         // Retrieve the timer notification associated to the alarm-clock.
+         //
+</pre></body></html>
+

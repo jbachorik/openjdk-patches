@@ -1,0 +1,212 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>New test/javax/management/timer/MissingNotificationTest.java</title>
+<body id="SUNWwebrev">
+<pre>
+   1 /*
+   2  * Copyright (c) 2008, 2011, Oracle and/or its affiliates. All rights reserved.
+   3  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+   4  *
+   5  * This code is free software; you can redistribute it and/or modify it
+   6  * under the terms of the GNU General Public License version 2 only, as
+   7  * published by the Free Software Foundation.
+   8  *
+   9  * This code is distributed in the hope that it will be useful, but WITHOUT
+  10  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+  11  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+  12  * version 2 for more details (a copy is included in the LICENSE file that
+  13  * accompanied this code).
+  14  *
+  15  * You should have received a copy of the GNU General Public License version
+  16  * 2 along with this work; if not, write to the Free Software Foundation,
+  17  * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+  18  *
+  19  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+  20  * or visit www.oracle.com if you need additional information or have any
+  21  * questions.
+  22  */
+  23 
+  24 /*
+  25  * @test
+  26  * @bug 6809322
+  27  * @summary Test for missing notifications in a high concurrency environment
+  28  * @author Jaroslav Bachorik
+  29  * @run clean MissingNotificationTest
+  30  * @run build MissingNotificationTest
+  31  * @run main MissingNotificationTest
+  32  */
+  33 
+  34 import java.util.Date;
+  35 import java.util.Random;
+  36 import java.util.concurrent.ExecutorService;
+  37 import java.util.concurrent.Executors;
+  38 import java.util.concurrent.TimeUnit;
+  39 import javax.management.timer.Timer;
+  40 import javax.management.Notification;
+  41 import javax.management.NotificationListener;
+  42 
+  43 public class MissingNotificationTest {
+  44     private static int TASK_COUNT = 10000;
+  45     private static long fixedDelay = 0;// anything bigger than 100 and no alarms remain unfired
+  46 
+  47     private static class NotifListener implements NotificationListener {
+  48 
+  49         int count;
+  50 
+  51         public synchronized void handleNotification(Notification notification, Object handback) {
+  52             count++;
+  53         }
+  54 
+  55         synchronized int getCount() {
+  56             return count;
+  57         }
+  58     }
+  59     
+  60     public static void main(String[] args) throws Exception {
+  61         System.out.println(
+  62             "&gt;&gt;&gt; Test for missing notifications.");
+  63 
+  64         System.out.println("&gt;&gt;&gt; Create a Timer object.");
+  65         final Timer timer = new Timer();
+  66 
+  67         timer.start();
+  68 
+  69         NotifListener listener = new NotifListener();
+  70         timer.addNotificationListener(listener, null, null);
+  71 
+  72         ExecutorService executor = Executors.newFixedThreadPool(100);
+  73         final Random rand = new Random();
+  74 
+  75 
+  76         for (int i = 0; i &lt; TASK_COUNT; i++) {
+  77             executor.execute(new Runnable() {
+  78                 public void run() {
+  79                     long dateMillis = System.currentTimeMillis() + fixedDelay + rand.nextInt(2000);
+  80                     Date date = new Date(dateMillis);
+  81                     timer.addNotification("type", "msg", "userData", date);
+  82                 }
+  83             });
+  84 
+  85         }
+  86 
+  87         executor.shutdown();
+  88         executor.awaitTermination(20, TimeUnit.SECONDS);
+  89 
+  90         waitForNotificationsToEnd(listener);
+  91 
+  92         timer.stop();
+  93 
+  94         if (listener.count &lt; TASK_COUNT) {
+  95             throw new RuntimeException("Not fired: " + (TASK_COUNT - listener.count));
+  96         } else {
+  97             System.out.println("&gt;&gt;&gt; All notifications handled OK");
+  98         }
+  99         
+ 100         System.out.println("&gt;&gt;&gt; Bye bye!");
+ 101     }
+ 102 
+ 103     /**
+ 104      * Will return when all notifications are handled or after 10sec. of no new
+ 105      * notifications
+ 106      *
+ 107      * @param listener
+ 108      * @throws InterruptedException
+ 109      */
+ 110     private static void waitForNotificationsToEnd(NotifListener listener)
+ 111             throws InterruptedException {
+ 112         int oldCout = listener.getCount();
+ 113         int noChangeCounter = 1;
+ 114         while (listener.getCount() &lt; TASK_COUNT) {
+ 115             Thread.sleep(1000);
+ 116             System.out.print('.');
+ 117             if (oldCout == listener.getCount())//no change
+ 118             {
+ 119                 if (++noChangeCounter &gt; 10) {
+ 120                     break;
+ 121                 }
+ 122             } else {
+ 123                 noChangeCounter = 1;
+ 124             }
+ 125 
+ 126             oldCout = listener.getCount();
+ 127         }
+ 128         System.out.println();
+ 129     }
+ 130 }
+</pre></body></html>

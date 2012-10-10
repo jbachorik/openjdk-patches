@@ -1,0 +1,250 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>jdk Udiff test/javax/management/timer/MissingNotificationTest.java</title>
+
+<style type="text/css" media="screen">
+span.new {
+    color: blue;
+    font-weight: normal;
+}
+</style>
+
+</head>
+<body id="SUNWwebrev">
+<h2>test/javax/management/timer/MissingNotificationTest.java</h2>
+        <a class="print" href="javascript:print()">Print this page</a>
+<pre>rev 5922 : [mq]: JDK-<a href="http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=6809322">6809322</a></pre>
+        <pre>
+</pre><hr /><pre>
+<span class="newmarker">@@ -21,78 +21,110 @@</span>
+  * questions.
+  */
+ 
+ /*
+  * @test
+<span class="removed">- * @bug 6659215</span>
+<span class="removed">- * @summary Test on timer start method with past notifications</span>
+<span class="removed">- * @author Shanliang JIANG</span>
+<span class="removed">- * @run clean StartTest</span>
+<span class="removed">- * @run build StartTest</span>
+<span class="removed">- * @run main StartTest</span>
+<span class="new">+ * @bug 6809322</span>
+<span class="new">+ * @summary Test for missing notifications in a high concurrency environment</span>
+<span class="new">+ * @author Jaroslav Bachorik</span>
+<span class="new">+ * @run clean MissingNotificationTest</span>
+<span class="new">+ * @run build MissingNotificationTest</span>
+<span class="new">+ * @run main MissingNotificationTest</span>
+  */
+ 
+ import java.util.Date;
+<span class="new">+import java.util.Random;</span>
+<span class="new">+import java.util.concurrent.ExecutorService;</span>
+<span class="new">+import java.util.concurrent.Executors;</span>
+<span class="new">+import java.util.concurrent.TimeUnit;</span>
+ import javax.management.timer.Timer;
+ import javax.management.Notification;
+ import javax.management.NotificationListener;
+ 
+<span class="removed">-public class StartTest {</span>
+<span class="new">+public class MissingNotificationTest {</span>
+<span class="new">+    private static int TASK_COUNT = 10000;</span>
+<span class="new">+    private static long fixedDelay = 0;// anything bigger than 100 and no alarms remain unfired</span>
+<span class="new">+</span>
+<span class="new">+    private static class NotifListener implements NotificationListener {</span>
+<span class="new">+</span>
+<span class="new">+        int count;</span>
+<span class="new">+</span>
+<span class="new">+        public synchronized void handleNotification(Notification notification, Object handback) {</span>
+<span class="new">+            count++;</span>
+<span class="new">+        }</span>
+<span class="new">+</span>
+<span class="new">+        synchronized int getCount() {</span>
+<span class="new">+            return count;</span>
+<span class="new">+        }</span>
+<span class="new">+    }</span>
+<span class="new">+    </span>
+     public static void main(String[] args) throws Exception {
+         System.out.println(
+<span class="removed">-            "&gt;&gt;&gt; Test on timer start method with past notifications.");</span>
+<span class="new">+            "&gt;&gt;&gt; Test for missing notifications.");</span>
+ 
+         System.out.println("&gt;&gt;&gt; Create a Timer object.");
+<span class="removed">-        Timer timer = new Timer();</span>
+<span class="new">+        final Timer timer = new Timer();</span>
+ 
+<span class="removed">-        System.out.println(</span>
+<span class="removed">-            "&gt;&gt;&gt; Set the flag (setSendPastNotification) to true.");</span>
+<span class="removed">-        timer.setSendPastNotifications(true);</span>
+<span class="new">+        timer.start();</span>
+ 
+<span class="removed">-        timer.addNotificationListener(myListener, null, null);</span>
+<span class="new">+        NotifListener listener = new NotifListener();</span>
+<span class="new">+        timer.addNotificationListener(listener, null, null);</span>
+ 
+<span class="removed">-        System.out.println("&gt;&gt;&gt; Add notifications: " + SENT);</span>
+<span class="new">+        ExecutorService executor = Executors.newFixedThreadPool(100);</span>
+<span class="new">+        final Random rand = new Random();</span>
+ 
+<span class="removed">-        Date date = new Date();</span>
+<span class="removed">-        for (int i = 0; i &lt; SENT; i++) {</span>
+<span class="removed">-            timer.addNotification(</span>
+<span class="removed">-                "testType" + i, "testMsg" + i, "testData" + i, date);</span>
+<span class="new">+</span>
+<span class="new">+        for (int i = 0; i &lt; TASK_COUNT; i++) {</span>
+<span class="new">+            executor.execute(new Runnable() {</span>
+<span class="new">+                public void run() {</span>
+<span class="new">+                    long dateMillis = System.currentTimeMillis() + fixedDelay + rand.nextInt(2000);</span>
+<span class="new">+                    Date date = new Date(dateMillis);</span>
+<span class="new">+                    timer.addNotification("type", "msg", "userData", date);</span>
+         }
+<span class="new">+            });</span>
+ 
+<span class="removed">-        System.out.println("&gt;&gt;&gt; The notifications should be sent at " + date);</span>
+<span class="removed">-        System.out.println("&gt;&gt;&gt; Sleep 100 ms to have past notifications.");</span>
+<span class="removed">-        Thread.sleep(100);</span>
+<span class="new">+        }</span>
+ 
+<span class="removed">-        System.out.println("&gt;&gt;&gt; Start the timer at " + new Date());</span>
+<span class="removed">-        timer.start();</span>
+<span class="new">+        executor.shutdown();</span>
+<span class="new">+        executor.awaitTermination(20, TimeUnit.SECONDS);</span>
+<span class="new">+</span>
+<span class="new">+        waitForNotificationsToEnd(listener);</span>
+ 
+<span class="removed">-        System.out.println("&gt;&gt;&gt; Stop the timer.");</span>
+<span class="removed">-        Thread.sleep(100);</span>
+<span class="removed">-        stopping = true;</span>
+         timer.stop();
+ 
+<span class="removed">-        if (received != SENT) {</span>
+<span class="removed">-            throw new RuntimeException(</span>
+<span class="removed">-                "Expected to receive " + SENT + " but got " + received);</span>
+<span class="new">+        if (listener.count &lt; TASK_COUNT) {</span>
+<span class="new">+            throw new RuntimeException("Not fired: " + (TASK_COUNT - listener.count));</span>
+<span class="new">+        } else {</span>
+<span class="new">+            System.out.println("&gt;&gt;&gt; All notifications handled OK");</span>
+         }
+ 
+<span class="removed">-        System.out.println("&gt;&gt;&gt; Received all expected notifications.");</span>
+<span class="removed">-</span>
+         System.out.println("&gt;&gt;&gt; Bye bye!");
+     }
+ 
+<span class="removed">-    private static NotificationListener myListener =</span>
+<span class="removed">-        new NotificationListener() {</span>
+<span class="removed">-            public void handleNotification(Notification n, Object hb) {</span>
+<span class="removed">-                if (!stopping) {</span>
+<span class="removed">-                    received++;</span>
+<span class="removed">-                    System.out.println(</span>
+<span class="removed">-                        "&gt;&gt;&gt; myListener-handleNotification: received " +</span>
+<span class="removed">-                        n.getSequenceNumber());</span>
+<span class="new">+    /**</span>
+<span class="new">+     * Will return when all notifications are handled or after 10sec. of no new</span>
+<span class="new">+     * notifications</span>
+<span class="new">+     *</span>
+<span class="new">+     * @param listener</span>
+<span class="new">+     * @throws InterruptedException</span>
+<span class="new">+     */</span>
+<span class="new">+    private static void waitForNotificationsToEnd(NotifListener listener)</span>
+<span class="new">+            throws InterruptedException {</span>
+<span class="new">+        int oldCout = listener.getCount();</span>
+<span class="new">+        int noChangeCounter = 1;</span>
+<span class="new">+        while (listener.getCount() &lt; TASK_COUNT) {</span>
+<span class="new">+            Thread.sleep(1000);</span>
+<span class="new">+            System.out.print('.');</span>
+<span class="new">+            if (oldCout == listener.getCount())//no change</span>
+<span class="new">+            {</span>
+<span class="new">+                if (++noChangeCounter &gt; 10) {</span>
+<span class="new">+                    break;</span>
+             }
+<span class="new">+            } else {</span>
+<span class="new">+                noChangeCounter = 1;</span>
+         }
+<span class="removed">-    };</span>
+ 
+<span class="removed">-    private static int SENT = 10;</span>
+<span class="removed">-    private static volatile int received = 0;</span>
+<span class="removed">-    private static volatile boolean stopping = false;</span>
+<span class="new">+            oldCout = listener.getCount();</span>
+<span class="new">+        }</span>
+<span class="new">+        System.out.println();</span>
+<span class="new">+    }</span>
+ }
+</pre></body></html>
+
