@@ -1,2 +1,2 @@
 src/share/classes/javax/management/timer/Timer.java
-test/javax/management/timer/MissingNotificationTest.java test/javax/management/timer/StartTest.java
+test/javax/management/timer/MissingNotificationTest.java

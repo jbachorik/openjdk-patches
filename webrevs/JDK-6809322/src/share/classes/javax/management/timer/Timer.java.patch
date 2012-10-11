@@ -1,5 +1,5 @@
---- old/src/share/classes/javax/management/timer/Timer.java	2012-10-10 16:06:16.354229459 +0200
-+++ new/src/share/classes/javax/management/timer/Timer.java	2012-10-10 16:06:16.198229462 +0200
+--- old/src/share/classes/javax/management/timer/Timer.java	2012-10-10 20:48:14.011200221 +0200
++++ new/src/share/classes/javax/management/timer/Timer.java	2012-10-10 20:48:13.871200219 +0200
 @@ -28,12 +28,11 @@
  import static com.sun.jmx.defaults.JmxProperties.TIMER_LOGGER;
  import java.util.ArrayList;
